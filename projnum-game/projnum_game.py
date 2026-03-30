@@ -18,20 +18,21 @@ cell_size = 20 #Taille des cellules
 cols, rows = width//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
 
-T0 = 298.15 #Température initiale de l'eau = température ambiante donc 25°C
-T_ev = T0+100 #Température d'évaporation de l'eau (à p ambiante)
+CToK = 273.15 #Conversion Celsius-Kelvin
+T0 = CToK + 25 #Température initiale de l'eau = température ambiante donc 25°C
+T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
 m_eau = 0.001 #Masse d'eau dans une cellule ici 1g ce qui correspond à des cellules 3D de 1cm^3 de volume
 C_me = 4180 #Capacité thermique massique de l'eau en J/kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
-nbr_nav = 5 #Nombre de neutrons rapides à absorber avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
-q_ad = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la simu
+nbr_nav = 5 #Nombre de neutrons lents à absorber avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
+q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu
 
-p_abs_lente = 1 #Probabilité d'absorption des neutrons lents en %
-p_int_rapide = 15 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
+p_abs_lente = 15 #Probabilité d'absorption des neutrons lents en %
+p_int_rapide = 0 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
 
-T_reinj = 5 #Temps nécessaire en secondes avant réinjection d'eau à température ambiante
+T_reinj = 50 #Temps nécessaire en secondes avant réinjection d'eau à température ambiante
 Palier1 = T0+(T_ev-T0)/3 #Premier palier de température ici de 25°C à 50°C
 Palier2 = T0+2*(T_ev-T0)/3 #Second palier donc de 50°C à 75°C
 
@@ -74,12 +75,17 @@ while running:
 
     for i in range(cols):
         for j in range(rows):
+            #mécanisme de refroidissement continu
+            grid[i][j][0] -= (T_ev-T0)/T_reinj/fps #On fait baisser la température de la case progressivement
+
+            #TODO implémenter le transfert thermique entre les case voisine pour un deltaT correspondant au FPS (coef de transfert thermique de l'eau + surface en contact)
+
             if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
                 grid[i][j][1] += 1 #On incrémente le compteur
                 color = noir
-                if grid[i][j][1] > T_reinj*fps: #Si le compteur atteint la valeur fixée
-                    grid[i][j][0] = T0 #La température est reset
-                    grid[i][j][1] = 0 #Le compteur aussi
+                # if grid[i][j][1] > T_reinj*fps: #Si le compteur atteint la valeur fixée
+                #     grid[i][j][0] = T0 #La température est reset
+                #     grid[i][j][1] = 0 #Le compteur aussi
             else:
                 if grid[i][j][0] < Palier1:
                     color = bleu
