@@ -4,6 +4,7 @@ import numpy as np
 
 pygame.init()
 width, height = 800, 600
+rightMenuSize = 200
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
 fps = 60
@@ -15,8 +16,64 @@ orange = (255, 165, 0)
 rouge = (255, 50, 50)
 
 cell_size = 20 #Taille des cellules
-cols, rows = width//cell_size, height//cell_size
+cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
+
+class RightMenu:
+    font = pygame.font.Font('freesansbold.ttf', 12);
+    temp_surface: pygame.Surface;
+    nbNeutron_surface: pygame.Surface;
+    vapQuantity_surface: pygame.Surface;
+    temp_rect: pygame.Rect;
+    nbNeutron_rect: pygame.Rect;
+    vapQuantity_rect: pygame.Rect;
+
+    temp: float;
+    nbNeutron: int;
+    vapQuantity: int;
+    
+    spacing = 15; #pix
+    start = 10; #pix
+
+    def prepare_menu(self):
+        posY = self.start; #pix
+        self.temp_surface = self.font.render("Température moyenne :", True, (255, 255, 255))
+        self.temp_rect = self.temp_surface.get_rect(topleft=(610, posY))
+        posY += self.spacing
+        self.nbNeutron_surface = self.font.render("Nombre de neutrons :", True, (255, 255, 255))
+        self.nbNeutron_rect = self.nbNeutron_surface.get_rect(topleft=(610, posY))
+        posY += self.spacing
+        self.vapQuantity_surface = self.font.render("Quantité de vapeur :", True, (255, 255, 255))
+        self.vapQuantity_rect = self.vapQuantity_surface.get_rect(topleft=(610, posY))
+        self.temp = 0;
+        self.nbNeutron = 0;
+        self.vapQuantity = 0;
+
+    def display_menu(self, screen):
+        screen.blit(self.temp_surface, self.temp_rect)
+        screen.blit(self.nbNeutron_surface, self.nbNeutron_rect)
+        screen.blit(self.vapQuantity_surface, self.vapQuantity_rect)
+        
+        posY = self.start; #pix
+        temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
+        temp_rect = temp_surface.get_rect(topright=(790, posY))
+        screen.blit(temp_surface, temp_rect)
+        posY += self.spacing
+        nbNeutron_surface = self.font.render(f"{self.nbNeutron:.0f}", True, (255, 255, 255))
+        nbNeutron_rect = nbNeutron_surface.get_rect(topright=(790, posY))
+        screen.blit(nbNeutron_surface, nbNeutron_rect)
+        posY += self.spacing
+        vapQuantity_surface = self.font.render(f"{self.vapQuantity}", True, (255, 255, 255))
+        vapQuantity_rect = vapQuantity_surface.get_rect(topright=(790, posY))
+        screen.blit(vapQuantity_surface, vapQuantity_rect)
+
+    def computeMetrics(self, neutrons, grid):
+        self.nbNeutron = len(neutrons);
+        self.temp = sum([grid[i][j][0] for i in range(cols) for j in range(rows)])/(cols*rows);
+        self.vapQuantity = sum([1 for i in range(cols) for j in range(rows) if grid[i][j][0] >= T_ev]);
+
+rightMenu = RightMenu();
+rightMenu.prepare_menu();
 
 CToK = 273.15 #Conversion Celsius-Kelvin
 T0 = CToK + 25 #Température initiale de l'eau = température ambiante donc 25°C
@@ -64,6 +121,8 @@ neutrons = []
 running = True
 while running:
     screen.fill(noir)
+    rightMenu.computeMetrics(neutrons, grid)
+    rightMenu.display_menu(screen);
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -73,33 +132,10 @@ while running:
         mouse_x, mouse_y = pygame.mouse.get_pos()
         neutrons.append(Neutron(mouse_x, mouse_y)) #On ajoute les neutrons en dessous du curseur
 
-    for i in range(cols):
-        for j in range(rows):
-            #mécanisme de refroidissement continu
-            grid[i][j][0] -= (T_ev-T0)/T_reinj/fps #On fait baisser la température de la case progressivement
-
-            #TODO implémenter le transfert thermique entre les case voisine pour un deltaT correspondant au FPS (coef de transfert thermique de l'eau + surface en contact)
-
-            if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
-                grid[i][j][1] += 1 #On incrémente le compteur
-                color = noir
-                # if grid[i][j][1] > T_reinj*fps: #Si le compteur atteint la valeur fixée
-                #     grid[i][j][0] = T0 #La température est reset
-                #     grid[i][j][1] = 0 #Le compteur aussi
-            else:
-                if grid[i][j][0] < Palier1:
-                    color = bleu
-                elif grid[i][j][0] < Palier2:
-                    color = orange
-                elif grid[i][j][0] < T_ev:
-                    color = rouge
-            pygame.draw.rect(screen, color, (i*cell_size, j*cell_size, cell_size-border, cell_size-border))
-
     for n in neutrons[:]:
         n.deplacer()
-        n.dessiner(screen)
 
-        if n.x < 0 or n.x > width or n.y < 0 or n.y > height: #Si le neutron sort de l'écran on le supprime
+        if n.x < 0 or n.x > width - rightMenuSize or n.y < 0 or n.y > height: #Si le neutron sort de l'écran on le supprime
             neutrons.remove(n)
             continue
 
@@ -119,6 +155,47 @@ while running:
                     if n in neutrons:
                         neutrons.remove(n) #Le neutron lent est quant à lui absorbé donc il disparait
                         continue
+
+    # Remontée des bulles de vapeur
+    for i in range(cols):
+        for j in range(rows):
+            #mécanisme de refroidissement continu
+            if (grid[i][j][0] > T0 and j == 0):
+                grid[i][j][0] -= (T_ev-T0)/T_reinj/fps #On fait baisser la température de la case progressivement TODO utiliser une courbe de décroissance exponentielle plutôt que linéaire pour plus de réalisme
+
+            #TODO implémenter le transfert thermique entre les case voisine pour un deltaT correspondant au FPS (coef de transfert thermique de l'eau + surface en contact)
+
+            if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
+                if (j > 0 and grid[i][j-1][0] < T_ev):
+                    grid[i][j][1] += 1 #On incrémente le compteur
+                    if (grid[i][j][1] >= 10):
+                        tmp = grid[i][j-1][0]
+                        grid[i][j-1][0] = grid[i][j][0]
+                        grid[i][j][0] = tmp
+                        grid[i][j-1][1] = 0
+                        grid[i][j][1] = 0
+                else:
+                    grid[i][j][1] = 0;
+
+
+
+    # Affichage des cases d'eau
+    for i in range(cols):
+        for j in range(rows):
+            if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
+                color = noir
+            else:
+                if grid[i][j][0] < Palier1:
+                    color = bleu
+                elif grid[i][j][0] < Palier2:
+                    color = orange
+                elif grid[i][j][0] < T_ev:
+                    color = rouge
+            pygame.draw.rect(screen, color, (i*cell_size, j*cell_size, cell_size-border, cell_size-border))
+
+    # affichage des neutrons
+    for n in neutrons[:]:
+        n.dessiner(screen)
 
     pygame.display.flip()
     clock.tick(fps)
