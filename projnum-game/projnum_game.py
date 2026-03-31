@@ -77,6 +77,7 @@ rightMenu.prepare_menu();
 
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
+Gamma = 10 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 10s réelles
 
 T0 = CToK + 25 #Température initiale de l'eau = température ambiante donc 25°C
 T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
@@ -89,7 +90,7 @@ m_n = 1.6749275e-27 #Masse d'un neutron en kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
 nbr_nav = 5 #Nombre de neutrons lents à absorber avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
-q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite
+q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons
 
 p_abs_lente = 15 #Probabilité d'absorption des neutrons lents en %
 p_int_rapide = 0 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
@@ -99,9 +100,8 @@ Palier1 = T0+(T_ev-T0)/3 #Premier palier de température ici de 25°C à 50°C
 Palier2 = T0+2*(T_ev-T0)/3 #Second palier donc de 50°C à 75°C
 
 delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
-T_ref_cc = 500 #Temps de refroidissement (en s) par conducto-convexion au niveau de la plaque supérieure
-T_ref_c = 50 #Temps de refroidissement (en s) par conduction au sein du bassin
-k = 3/T_ref_cc #Constante pour la loi de Newton
+k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'interface supérieure
+k2 = 2.4e-5*Gamma #Constante pour la loi de Fourier - conduction au sein du bassin
 
 grid = np.zeros((cols, rows, 2)) #Initialisation de la grille, chaque case contient un vecteur (température, temps)
 grid[:, :, 0] = T0 #Remplissage des températures
@@ -171,15 +171,26 @@ while running:
                         neutrons.remove(n) #Le neutron lent est quant à lui absorbé donc il disparait
                         continue
 
+    T = grid[:, :, 0] #On isole la matrice des températures
+    diff = np.zeros_like(T) #On génère une matrice qui contiendra les flux
+
+    diff[:-1, :] += T[1:, :] - T[:-1, :] #Flux vertical du dessous
+    diff[1:, :] += T[:-1, :] - T[1:, :] #Flux vertical du dessus
+    diff[:, :-1] += T[:, 1:] - T[:, :-1] #Flux horizontal de la droite
+    diff[:, 1:] += T[:, :-1] - T[:, 1:] #Flux horizontal de la gauche
+
+    coeff_conduction = min(0.24, k2) #On plafonne à 1/4, la limite de k2 pour 4 voisines
+    isEv = (T<T_ev).astype(float) #Ici on renvoie 0 si c'est de la vapeur et 1 si c'est liquide, car conduction que pour le liquide
+
+    grid[:, :, 0] += coeff_conduction*diff*isEv #On met à jour
+    
     # Remontée des bulles de vapeur
     for i in range(cols):
         for j in range(rows):
             #mécanisme de refroidissement continu
             if (grid[i, j, 0] > T0 and j == 0):
                 Ti = grid[i, j, 0]
-                grid[i, j, 0] = Ti-k*(Ti-T0)*delta_t #On fait baisser la température de la case progressivement
-
-            #TODO implémenter le transfert thermique entre les case voisine pour un deltaT correspondant au FPS (coef de transfert thermique de l'eau + surface en contact)
+                grid[i, j, 0] = Ti-k1*(Ti-T0)*delta_t #On fait baisser la température de la case progressivement
 
             if grid[i, j, 0] >= T_ev: #Si la case contient de la vapeur
                 if (j > 0 and grid[i, j-1, 0] < T_ev):
