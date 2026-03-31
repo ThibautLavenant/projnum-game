@@ -69,31 +69,42 @@ class RightMenu:
 
     def computeMetrics(self, neutrons, grid):
         self.nbNeutron = len(neutrons);
-        self.temp = sum([grid[i][j][0] for i in range(cols) for j in range(rows)])/(cols*rows);
-        self.vapQuantity = sum([1 for i in range(cols) for j in range(rows) if grid[i][j][0] >= T_ev]);
+        self.temp = sum([grid[i, j, 0] for i in range(cols) for j in range(rows)])/(cols*rows);
+        self.vapQuantity = sum([1 for i in range(cols) for j in range(rows) if grid[i, j, 0] >= T_ev]);
 
 rightMenu = RightMenu();
 rightMenu.prepare_menu();
 
+pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
+
 T0 = CToK + 25 #Température initiale de l'eau = température ambiante donc 25°C
 T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
-m_eau = 0.001 #Masse d'eau dans une cellule ici 1g ce qui correspond à des cellules 3D de 1cm^3 de volume
+
+rho_eau = 997 #Masse volumique de l'eau en kg/m^3
 C_me = 4180 #Capacité thermique massique de l'eau en J/kg
+m_eau = rho_eau*(cell_size*pxTom)**3 #Masse d'eau dans une cellule
+
+m_n = 1.6749275e-27 #Masse d'un neutron en kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
 nbr_nav = 5 #Nombre de neutrons lents à absorber avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
-q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu
+q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite
 
 p_abs_lente = 15 #Probabilité d'absorption des neutrons lents en %
 p_int_rapide = 0 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
 
-T_reinj = 50 #Temps nécessaire en secondes avant réinjection d'eau à température ambiante
 Palier1 = T0+(T_ev-T0)/3 #Premier palier de température ici de 25°C à 50°C
 Palier2 = T0+2*(T_ev-T0)/3 #Second palier donc de 50°C à 75°C
 
-grid = [[[T0, 0] for _ in range(rows)] for _ in range(cols)] #Initialisation de la grille, chaque case contient un vecteur (température, temps)
+delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
+T_ref_cc = 500 #Temps de refroidissement (en s) par conducto-convexion au niveau de la plaque supérieure
+T_ref_c = 50 #Temps de refroidissement (en s) par conduction au sein du bassin
+k = 3/T_ref_cc #Constante pour la loi de Newton
+
+grid = np.zeros((cols, rows, 2)) #Initialisation de la grille, chaque case contient un vecteur (température, temps)
+grid[:, :, 0] = T0 #Remplissage des températures
 
 class Neutron:
     def __init__(self, x, y):
@@ -109,6 +120,7 @@ class Neutron:
         self.vx = self.v * np.cos(self.angle)
         self.vy = self.v * np.sin(self.angle)
         self.isFast = (self.v == 3)
+        self.v_real = (2*Ec_fast/m_n)**0.5 if self.isFast else (2*Ec_slow/m_n)**0.5
         
     def deplacer(self):
         self.x += self.vx
@@ -119,10 +131,13 @@ class Neutron:
 
 neutrons = []
 running = True
+
 while running:
     screen.fill(noir)
     rightMenu.computeMetrics(neutrons, grid)
-    rightMenu.display_menu(screen);
+    rightMenu.display_menu(screen)
+
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -142,16 +157,16 @@ while running:
         grid_x, grid_y = int(n.x//cell_size), int(n.y//cell_size) #Coordonnées du neutron cible dans la base des cases
 
         if 0 <= grid_x < cols and 0 <= grid_y < rows: #On verifie que le neutron soit bien dans l'écran
-            if grid[grid_x][grid_y][0] <= T_ev: #Si la case contient de l'eau liquide
+            if grid[grid_x, grid_y, 0] <= T_ev: #Si la case contient de l'eau liquide
                 interact_rapide = random.choices([0, 1], weights=[100-p_int_rapide, p_int_rapide])[0] #On lance les dés pour l'intéraction rapide
                 absorption_lent = random.choices([0, 1], weights=[100-p_abs_lente, p_abs_lente])[0] #Idem pour l'absorption lente
 
                 if n.isFast and interact_rapide == 1:
-                    grid[grid_x][grid_y][0] += q_ad*(Ec_fast-Ec_slow)/(m_eau*C_me) #Chaleur fournie par le neutron rapide
+                    grid[grid_x, grid_y, 0] += q_ad*(Ec_fast-Ec_slow)/(m_eau*C_me) #Chaleur fournie par le neutron rapide
                     n.v = 1 #Ralentissement du neutron rapide
                     n.actu_vitesse()
                 elif not n.isFast and absorption_lent == 1:
-                    grid[grid_x][grid_y][0] += q_ad*Ec_slow/(m_eau*C_me) #Chaleur fournie par le neutron lent (concrètement négligeable)
+                    grid[grid_x, grid_y, 0] += q_ad*Ec_slow/(m_eau*C_me) #Chaleur fournie par le neutron lent (concrètement négligeable)
                     if n in neutrons:
                         neutrons.remove(n) #Le neutron lent est quant à lui absorbé donc il disparait
                         continue
@@ -160,36 +175,37 @@ while running:
     for i in range(cols):
         for j in range(rows):
             #mécanisme de refroidissement continu
-            if (grid[i][j][0] > T0 and j == 0):
-                grid[i][j][0] -= (T_ev-T0)/T_reinj/fps #On fait baisser la température de la case progressivement TODO utiliser une courbe de décroissance exponentielle plutôt que linéaire pour plus de réalisme
+            if (grid[i, j, 0] > T0 and j == 0):
+                Ti = grid[i, j, 0]
+                grid[i, j, 0] = Ti-k*(Ti-T0)*delta_t #On fait baisser la température de la case progressivement
 
             #TODO implémenter le transfert thermique entre les case voisine pour un deltaT correspondant au FPS (coef de transfert thermique de l'eau + surface en contact)
 
-            if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
-                if (j > 0 and grid[i][j-1][0] < T_ev):
-                    grid[i][j][1] += 1 #On incrémente le compteur
-                    if (grid[i][j][1] >= 10):
-                        tmp = grid[i][j-1][0]
-                        grid[i][j-1][0] = grid[i][j][0]
-                        grid[i][j][0] = tmp
-                        grid[i][j-1][1] = 0
-                        grid[i][j][1] = 0
+            if grid[i, j, 0] >= T_ev: #Si la case contient de la vapeur
+                if (j > 0 and grid[i, j-1, 0] < T_ev):
+                    grid[i, j, 1] += 1 #On incrémente le compteur
+                    if (grid[i, j, 1] >= 10):
+                        tmp = grid[i, j-1, 0]
+                        grid[i, j-1, 0] = grid[i, j, 0]
+                        grid[i, j, 0] = tmp
+                        grid[i, j-1, 1] = 0
+                        grid[i, j, 1] = 0
                 else:
-                    grid[i][j][1] = 0;
+                    grid[i, j, 1] = 0
 
 
 
     # Affichage des cases d'eau
     for i in range(cols):
         for j in range(rows):
-            if grid[i][j][0] >= T_ev: #Si la case contient de la vapeur
+            if grid[i, j, 0] >= T_ev: #Si la case contient de la vapeur
                 color = noir
             else:
-                if grid[i][j][0] < Palier1:
+                if grid[i, j, 0] < Palier1:
                     color = bleu
-                elif grid[i][j][0] < Palier2:
+                elif grid[i, j, 0] < Palier2:
                     color = orange
-                elif grid[i][j][0] < T_ev:
+                elif grid[i, j, 0] < T_ev:
                     color = rouge
             pygame.draw.rect(screen, color, (i*cell_size, j*cell_size, cell_size-border, cell_size-border))
 
