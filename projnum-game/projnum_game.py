@@ -11,7 +11,9 @@ fps = 60
 
 noir = (10, 10, 10)
 blanc = (245, 245, 245)
+
 bleu = (50, 100, 255)
+jaune = (255, 100, 50)
 orange = (255, 165, 0)
 rouge = (255, 50, 50)
 
@@ -77,9 +79,9 @@ rightMenu.prepare_menu();
 
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
-Gamma = 10 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 10s réelles
+Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 10s réelles
 
-T0 = CToK + 25 #Température initiale de l'eau = température ambiante donc 25°C
+T0 = CToK + 20 #Température initiale de l'eau = température ambiante donc 25°C
 T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
 
 rho_eau = 997 #Masse volumique de l'eau en kg/m^3
@@ -89,15 +91,17 @@ m_eau = rho_eau*(cell_size*pxTom)**3 #Masse d'eau dans une cellule
 m_n = 1.6749275e-27 #Masse d'un neutron en kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
-nbr_nav = 5 #Nombre de neutrons lents à absorber avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
-q_ad = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons
+nbr_nav = 5 #Nombre de neutrons intéragissant avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
+q_ad_slow = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
+q_ad_fast = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
 
-p_abs_lente = 15 #Probabilité d'absorption des neutrons lents en %
-p_int_rapide = 0 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
+p_int_rapide = 15 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
+p_abs_lente = 0.1*p_int_rapide #Probabilité d'absorption des neutrons lents en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
 
-Palier1 = T0+(T_ev-T0)/3 #Premier palier de température ici de 25°C à 50°C
-Palier2 = T0+2*(T_ev-T0)/3 #Second palier donc de 50°C à 75°C
+Palier1 = T0+(T_ev-T0)/4 #Premier palier de température ici de 20°C à 40°C
+Palier2 = T0+2*(T_ev-T0)/4 #Second palier donc de 40°C à 60°C
+Palier3 = T0+3*(T_ev-T0)/4 #Second palier donc de 40°C à 60°C
 
 delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
 k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'interface supérieure
@@ -137,8 +141,6 @@ while running:
     rightMenu.computeMetrics(neutrons, grid)
     rightMenu.display_menu(screen)
 
-
-
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -162,11 +164,11 @@ while running:
                 absorption_lent = random.choices([0, 1], weights=[100-p_abs_lente, p_abs_lente])[0] #Idem pour l'absorption lente
 
                 if n.isFast and interact_rapide == 1:
-                    grid[grid_x, grid_y, 0] += q_ad*(Ec_fast-Ec_slow)/(m_eau*C_me) #Chaleur fournie par le neutron rapide
+                    grid[grid_x, grid_y, 0] += q_ad_fast*(Ec_fast-Ec_slow)/(m_eau*C_me) #Chaleur fournie par le neutron rapide
                     n.v = 1 #Ralentissement du neutron rapide
                     n.actu_vitesse()
                 elif not n.isFast and absorption_lent == 1:
-                    grid[grid_x, grid_y, 0] += q_ad*Ec_slow/(m_eau*C_me) #Chaleur fournie par le neutron lent (concrètement négligeable)
+                    grid[grid_x, grid_y, 0] += q_ad_slow*Ec_slow/(m_eau*C_me) #Chaleur fournie par le neutron lent (concrètement négligeable)
                     if n in neutrons:
                         neutrons.remove(n) #Le neutron lent est quant à lui absorbé donc il disparait
                         continue
@@ -204,8 +206,6 @@ while running:
                 else:
                     grid[i, j, 1] = 0
 
-
-
     # Affichage des cases d'eau
     for i in range(cols):
         for j in range(rows):
@@ -215,6 +215,8 @@ while running:
                 if grid[i, j, 0] < Palier1:
                     color = bleu
                 elif grid[i, j, 0] < Palier2:
+                    color = jaune                 
+                elif grid[i, j, 0] < Palier3:
                     color = orange
                 elif grid[i, j, 0] < T_ev:
                     color = rouge
