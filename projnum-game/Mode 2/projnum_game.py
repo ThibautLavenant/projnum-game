@@ -21,6 +21,7 @@ rouge = (255, 50, 50)
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
+JTokWh = 2.77778e-7 #Pour convertir des Joules en kWh
 
 class RightMenu:
     font = pygame.font.Font('freesansbold.ttf', 12);
@@ -89,7 +90,7 @@ class RightMenu:
         speed_val_rect = speed_val_surface.get_rect(topright=(790, posY))
         screen.blit(speed_val_surface, speed_val_rect)
         posY += self.spacing; #pix
-        enprod_surface = self.font.render(f"{self.enprod/1e6:.1f} MJ", True, (255, 255, 255))
+        enprod_surface = self.font.render(f"{self.enprod*JTokWh:.1f} kWh", True, (255, 255, 255))
         enprod_rect = enprod_surface.get_rect(topright=(790, posY))
         screen.blit(enprod_surface, enprod_rect)
 
@@ -105,7 +106,7 @@ rightMenu.prepare_menu()
 
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
-Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 50s réelles
+Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = Gamma secondes réelles
 
 c_s = cell_size*pxTom #Taille réelle des cellules
 v_b = 0.06 #Vitesse réelle des bulles en m/s
@@ -175,6 +176,7 @@ class Neutron:
 neutrons = []
 running = True
 sim_speed = 1
+n_per_sec = 100 #Nombre de neutrons générés chaque seconde
 
 while running:
     screen.fill(noir)
@@ -191,9 +193,11 @@ while running:
             elif event.key == pygame.K_DOWN:
                 sim_speed = max(1, sim_speed-1)
 
+
     if pygame.mouse.get_pressed()[0]:
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        neutrons.append(Neutron(mouse_x, mouse_y)) #On ajoute les neutrons en dessous du curseur
+        for _ in range(n_per_sec//fps) :
+            neutrons.append(Neutron(mouse_x, mouse_y)) #On ajoute les neutrons en dessous du curseur
 
     for _ in range(sim_speed):
         for n in neutrons[:]:
