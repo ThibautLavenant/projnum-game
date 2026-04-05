@@ -39,7 +39,12 @@ border = 5 #Bordure inter-cellules
 # Variables physiques de la modélisation
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
+JTokWh = 2.77778e-7 #Pour convertir des Joules en kWh
 Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 10s réelles
+
+c_s = cell_size*pxTom #Taille réelle des cellules
+v_b = 0.06 #Vitesse réelle des bulles en m/s
+beta = int(c_s*fps/(v_b*10)) #Tick pour la remontée des bulles, *10 pour la simu
 
 T0 = CToK + 20 #Température initiale de l'eau = température ambiante donc 25°C
 T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
@@ -67,3 +72,10 @@ Palier3 = T0+3*Interval #Second palier donc de 40°C à 60°C
 delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
 k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'interface supérieure
 k2 = 2.4e-5*Gamma #Constante pour la loi de Fourier - conduction au sein du bassin
+
+alpha_p = 50 #Pourcentage de puissance de la pompe
+dT_max_p = 0.1 #Nbr de Kelvin retirés chaque seconde dans le cas où alpha = 100
+T_min_p = 50+CToK #Température minimale de refroidissement par pompage
+eta_p = 0.33 #Rendement typique d'un réacteur à eau pressurisée
+dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
+

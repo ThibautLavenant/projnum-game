@@ -37,7 +37,6 @@ while running:
     if activeModeState is None:
         for event in events:
             if event.type == pygame.KEYDOWN:
-                print(event.key)
                 if event.key == pygame.K_KP1 or event.key == pygame.K_1:
                     activeModeState = Mode1StateModel()
                 if event.key == pygame.K_KP2 or event.key == pygame.K_2:
