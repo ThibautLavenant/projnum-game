@@ -46,13 +46,14 @@ c_s = cell_size*pxTom #Taille réelle des cellules
 v_b = 0.06 #Vitesse réelle des bulles en m/s
 beta = int(c_s*fps/(v_b*10)) #Tick pour la remontée des bulles, *10 pour la simu
 
+# Propriétés eau
 T0 = CToK + 20 #Température initiale de l'eau = température ambiante donc 25°C
 T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
-
 rho_eau = 997 #Masse volumique de l'eau en kg/m^3
 C_me = 4180 #Capacité thermique massique de l'eau en J/kg
 m_eau = rho_eau*(cell_size*pxTom)**3 #Masse d'eau dans une cellule
 
+# Propriétés neutrons
 m_n = 1.6749275e-27 #Masse d'un neutron en kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
@@ -60,22 +61,25 @@ nbr_nav = 5 #Nombre de neutrons intéragissant avant évaporation --> pour déte
 q_ad_slow = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
 q_ad_fast = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
 
+# Probas
 p_int_rapide = 10 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
 p_abs_lente = 0.1*p_int_rapide #Probabilité d'absorption des neutrons lents en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
 
+# Paliers de température
 Interval = (T_ev-T0)/4 #Étendue divisé par le nbr d'intervales souhaités
 Palier1 = T0+Interval #Premier palier de température ici de 20°C à 40°C
 Palier2 = T0+2*Interval #Second palier donc de 40°C à 60°C
 Palier3 = T0+3*Interval #Second palier donc de 40°C à 60°C
 
+# Thermo
 delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
 k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'interface supérieure
 k2 = 2.4e-5*Gamma #Constante pour la loi de Fourier - conduction au sein du bassin
 
+# Pompage
 alpha_p = 50 #Pourcentage de puissance de la pompe
 dT_max_p = 0.1 #Nbr de Kelvin retirés chaque seconde dans le cas où alpha = 100
 T_min_p = 50+CToK #Température minimale de refroidissement par pompage
 eta_p = 0.33 #Rendement typique d'un réacteur à eau pressurisée
 dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
-

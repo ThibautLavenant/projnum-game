@@ -112,8 +112,13 @@ class Mode2StateModel(ModeStateModel):
     grid: NDArray
     neutrons: NDArray
     sim_speed: int
+    res: int
     n_per_sec: int
     E_utile: float
+    data_list: list
+    fast_interact_count: int
+    slow_interact_count: int
+    emitted_neutrons_count: int
 
     # ===== Helpers =====
     def interactNeutronsWithWater(self):
@@ -126,10 +131,12 @@ class Mode2StateModel(ModeStateModel):
                     absorption_lent = random.choices([0, 1], weights=[100-p_abs_lente, p_abs_lente])[0] #Idem pour l'absorption lente
 
                     if n.isFast and interact_rapide == 1:
+                        self.fast_interact_count +=1
                         self.grid[grid_x, grid_y, 0] += q_ad_fast*(Ec_fast-Ec_slow)/(m_eau*C_me) #Chaleur fournie par le neutron rapide
                         n.v = 1 #Ralentissement du neutron rapide
                         n.actu_vitesse()
                     elif not n.isFast and absorption_lent == 1:
+                        self.slow_interact_count +=1
                         self.grid[grid_x, grid_y, 0] += q_ad_slow*Ec_slow/(m_eau*C_me) #Chaleur fournie par le neutron lent (concrètement négligeable)
                         if n in self.neutrons:
                             self.neutrons.remove(n) #Le neutron lent est quant à lui absorbé donc il disparait
@@ -174,6 +181,31 @@ class Mode2StateModel(ModeStateModel):
         n_ref = np.sum(mask) #On compte le nombre d'éléments où c'est bon
         self.E_utile += n_ref*eta_p*m_eau*C_me*dT_p
 
+    def save_data(self) :
+        step = fps//self.res #On calcule le pas de frame correspondant à la résolution souhaitée (<= fps nécessairement)
+        t_idx = self.loc_frame_count//step #Compteur entier de pas de temps
+
+        t_act = t_idx / self.res #On calcule le temps actuel en secondes
+
+        if not self.data_list or self.data_list[-1][0] != t_act: #On veut une liste vide ou attendre qu'on soit à la sec d'après
+            self.data_list.append([
+                t_act, #Le temps actuel (en s)
+                np.mean(self.grid[:,:,0]), #La température moyenne actuelle (en K)
+                self.E_utile, #L'énergie produite jusqu'à maintenant (en J)
+                self.fast_interact_count, #Nombre d'intéractions rapides (AD)
+                self.slow_interact_count, #... lentes (AD)
+                (self.fast_interact_count + self.slow_interact_count), #Nombre total d'intéractions (AD)
+                self.notInteract_count, #Nombre total de neutrons n'ayant pas intéragit
+                self.emitted_neutrons_count #Nombre total de neutrons émis
+            ])
+
+
+    def export_datas(self):
+        if self.data_list: #On regarde si la liste n'est pas vide
+            final_array = np.array(self.data_list)
+            header = "Temps(s), Température(K), Énergie (J), IntRapides (AD), IntLentes (AD), IntTot(AD), NeutÉmis (AD)"
+            np.savetxt("Datas/sim_data.txt", final_array, delimiter = ",", header=header, comments='')
+
     # ====== Main functions ======
 
     def prepare(self, screen):
@@ -186,10 +218,19 @@ class Mode2StateModel(ModeStateModel):
         self.grid[:, :, 0] = T0  # Remplissage des températures
         self.neutrons = []
         self.sim_speed = 1
+        self.loc_frame_count = 0 #Initialisation du compteur de frame
+        self.res = 10 #Résolution temporelle pour l'enregistrement des données (10 = décisecondes, 100 centisecondes...)
         self.n_per_sec = 100 #Nombre de neutrons générés chaque seconde
+        self.neutron_acc = 0 #Initialisation de l'accumulateur des fractions de neutrons
         self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur
+        self.data_list = [] #Initialisation du tableau de données
+        self.fast_interact_count = 0 #Initilisation du compteur d'intéractions rapides
+        self.slow_interact_count = 0 #... lentes
+        self.emitted_neutrons_count = 0 #Initilisation du compteur de neutrons émis
+        self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
 
     def update(self, events):
+        self.loc_frame_count += 1 #On incrémente le compteur de frame
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -198,11 +239,15 @@ class Mode2StateModel(ModeStateModel):
                     self.sim_speed = max(1, self.sim_speed - 1)
 
         for _ in range(self.sim_speed):
-            # Création des neurons
+            # Création des neutrons
             if pygame.mouse.get_pressed()[0]:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                for _ in range(self.n_per_sec//fps) :
-                    self.neutrons.append(Neutron(mouse_x, mouse_y)) #On ajoute les neutrons en dessous du curseur
+                self.neutron_acc += self.n_per_sec / fps
+
+                while self.neutron_acc >= 1 : #Tant qu'on a accumulé au moins 1 neutron entier, on le crée
+                    self.neutrons.append(Neutron(mouse_x, mouse_y))
+                    self.emitted_neutrons_count += 1
+                    self.neutron_acc -= 1 #On en retire un pour pas le re créer
 
             # Déplacement des neutrons
             for n in self.neutrons[:]:
@@ -212,6 +257,7 @@ class Mode2StateModel(ModeStateModel):
                     n.x < 0 or n.x > width - rightMenuSize or n.y < 0 or n.y > height
                 ):  # Si le neutron sort de l'écran on le supprime
                     self.neutrons.remove(n)
+                    self.notInteract_count += 1
                     continue
             
             # Intéraction des neutrons avec les cases d'eau
@@ -224,6 +270,7 @@ class Mode2StateModel(ModeStateModel):
             self.raiseGasBubble()
 
         self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed, self.E_utile)
+        self.save_data()
 
     def paint(self, screen):
         # Affichage du menu de droite
