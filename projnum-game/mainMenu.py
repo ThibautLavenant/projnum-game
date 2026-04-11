@@ -146,3 +146,6 @@ class MainMenuStateModel(ModeStateModel):
         x = self.border + self.spacing + self.itemWidth
         y = self.border + self.spacing + self.itemHeight
         self.drawMenuItem(x, y, 5, screen)
+
+    def export_datas():
+        pass

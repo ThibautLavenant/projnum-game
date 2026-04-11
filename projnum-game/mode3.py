@@ -186,3 +186,6 @@ class Mode3StateModel(ModeStateModel):
         # affichage des neutrons
         for n in self.neutrons[:]:
             n.dessiner(screen)
+
+    def export_datas(self):
+        pass
