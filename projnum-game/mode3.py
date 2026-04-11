@@ -140,7 +140,7 @@ class Mode3StateModel(ModeStateModel):
         self.neutrons = []
         self.sim_speed = 1
 
-    def update(self, events):
+    def update(self, events, setMode):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:

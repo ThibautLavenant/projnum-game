@@ -7,6 +7,7 @@ from mode2 import Mode2StateModel
 from mode3 import Mode3StateModel
 from mode4 import Mode4StateModel
 from mode5 import Mode5StateModel
+from mainMenu import MainMenuStateModel
 
 # Pygame initialisation
 rightMenuSize = 200
@@ -16,9 +17,30 @@ clock = pygame.time.Clock()
 running = True
 
 activeModeState: ModeStateModel = None
-font = pygame.font.Font("freesansbold.ttf", 12)
-messageSuface = font.render("Appuyez sur une touche de 1 à 5 pour choisir un mode", True, blanc)
-messageRect = messageSuface.get_rect(center=(width // 2, height // 2))
+mainMenuMode: ModeStateModel = MainMenuStateModel()
+mainMenuMode.prepare(screen)
+# font = pygame.font.Font("freesansbold.ttf", 12)
+# messageSuface = font.render("Appuyez sur une touche de 1 à 5 pour choisir un mode", True, blanc)
+# messageRect = messageSuface.get_rect(center=(width // 2, height // 2))
+
+def setMode(modeNum):
+    global activeModeState
+    if modeNum == 1:
+        activeModeState = Mode1StateModel()
+    elif modeNum == 2:
+        activeModeState = Mode2StateModel()
+    elif modeNum == 3:
+        activeModeState = Mode3StateModel()
+    elif modeNum == 4:
+        activeModeState = Mode4StateModel()
+    elif modeNum == 5:
+        activeModeState = Mode5StateModel()
+    elif modeNum == None:
+        activeModeState = None
+
+    if activeModeState is not None:
+        activeModeState.prepare(screen)
+    return activeModeState
 
 # Main loop
 while running:
@@ -28,34 +50,18 @@ while running:
     for event in events:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             if activeModeState is not None:
-                activeModeState.export_datas()
+                #activeModeState.export_datas()
                 activeModeState = None
-                pygame.display.set_caption("Simulation de réacteur nucléaire")
+                mainMenuMode.prepare(screen)
             else:
                 running = False
-    
-    
-    if activeModeState is None:
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_KP1 or event.key == pygame.K_1:
-                    activeModeState = Mode1StateModel()
-                if event.key == pygame.K_KP2 or event.key == pygame.K_2:
-                    activeModeState = Mode2StateModel()
-                if event.key == pygame.K_KP3 or event.key == pygame.K_3:
-                    activeModeState = Mode3StateModel()
-                if event.key == pygame.K_KP4 or event.key == pygame.K_4:
-                    activeModeState = Mode4StateModel()
-                if event.key == pygame.K_KP5 or event.key == pygame.K_5:
-                    activeModeState = Mode5StateModel()
-        if activeModeState is not None:
-            activeModeState.prepare(screen)
 
     if activeModeState is not None:
-        activeModeState.update(events)
+        activeModeState.update(events, setMode)
         activeModeState.paint(screen)
     else :
-        screen.blit(messageSuface, messageRect)
+        mainMenuMode.update(events, setMode)
+        mainMenuMode.paint(screen)  
 
     pygame.display.flip()
     clock.tick(fps)

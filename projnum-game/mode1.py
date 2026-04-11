@@ -165,28 +165,6 @@ class Mode1StateModel(ModeStateModel):
                             )  # Le neutron lent est quant à lui absorbé donc il disparait
                             continue
 
-    def raiseGasBubble(self):
-        for i in range(cols):
-            for j in range(rows):
-                # mécanisme de refroidissement continu
-                if self.grid[i, j, 0] > T0 and j == 0:
-                    Ti = self.grid[i, j, 0]
-                    self.grid[i, j, 0] = (
-                        Ti - k1 * (Ti - T0) * delta_t
-                    )  # On fait baisser la température de la case progressivement
-
-                if self.grid[i, j, 0] >= T_ev:  # Si la case contient de la vapeur
-                    if j > 0 and self.grid[i, j - 1, 0] < T_ev:
-                        self.grid[i, j, 1] += 1  # On incrémente le compteur
-                        if self.grid[i, j, 1] >= 10:
-                            tmp = self.grid[i, j - 1, 0]
-                            self.grid[i, j - 1, 0] = self.grid[i, j, 0]
-                            self.grid[i, j, 0] = tmp
-                            self.grid[i, j - 1, 1] = 0
-                            self.grid[i, j, 1] = 0
-                    else:
-                        self.grid[i, j, 1] = 0
-
     def handleHeatTransfer(self):
         T = self.grid[:, :, 0]  # On isole la matrice des températures
         diff = np.zeros_like(T)  # On génère une matrice qui contiendra les flux
@@ -218,7 +196,7 @@ class Mode1StateModel(ModeStateModel):
         self.neutrons = []
         self.sim_speed = 1
 
-    def update(self, events):
+    def update(self, events, setMode):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -249,9 +227,6 @@ class Mode1StateModel(ModeStateModel):
 
             # Transfert de chaleur entre les cases d'eau
             self.handleHeatTransfer()
-
-            # Remontée des bulles de vapeur
-            self.raiseGasBubble()
 
         self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed)
 

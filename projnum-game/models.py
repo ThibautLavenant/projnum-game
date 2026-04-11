@@ -8,7 +8,7 @@ class ModeStateModel(ABC):
         pass
 
     @abstractmethod
-    def update(self, events):
+    def update(self, events, setMode):
         """Update le mode pour jouer la simulation"""
         pass
 
@@ -62,8 +62,8 @@ q_ad_slow = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la
 q_ad_fast = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
 
 # Probas
-p_int_rapide = 10 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
-p_abs_lente = 0.1*p_int_rapide #Probabilité d'absorption des neutrons lents en %
+p_abs_lente = 10  #Probabilité d'absorption des neutrons lents en %
+p_int_rapide = 0.1*p_abs_lente #Probabilité d'intéraction des neutrons rapides avec l'eau en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
 
 # Paliers de température

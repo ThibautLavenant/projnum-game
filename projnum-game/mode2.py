@@ -145,11 +145,6 @@ class Mode2StateModel(ModeStateModel):
     def raiseGasBubble(self):
         for i in range(cols):
             for j in range(rows):
-                #mécanisme de refroidissement continu
-                if (self.grid[i, j, 0] > T0 and j == 0):
-                    Ti = self.grid[i, j, 0]
-                    self.grid[i, j, 0] = Ti-k1*(Ti-T0)*delta_t #On fait baisser la température de la case progressivement
-
                 if self.grid[i, j, 0] >= T_ev: #Si la case contient de la vapeur
                     if (j > 0 and self.grid[i, j-1, 0] < T_ev):
                         self.grid[i, j, 1] += 1 #On incrémente le compteur
@@ -229,7 +224,7 @@ class Mode2StateModel(ModeStateModel):
         self.emitted_neutrons_count = 0 #Initilisation du compteur de neutrons émis
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
 
-    def update(self, events):
+    def update(self, events, setMode):
         self.loc_frame_count += 1 #On incrémente le compteur de frame
         for event in events:
             if event.type == pygame.KEYDOWN:
