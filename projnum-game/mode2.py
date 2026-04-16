@@ -83,12 +83,12 @@ class RightMenu:
         self.enprod = enprod
 
 class Neutron:
-    def __init__(self, x, y):
+    def __init__(self, x, y, angle, v):
         self.x = x
         self.y = y
         self.isFast = True
-        self.angle = random.uniform(0, 2*np.pi)
-        self.v = random.choices([1, 3], weights=[100-p_n0_rapides, p_n0_rapides])[0] #Répartition des neutrons rapides et lents
+        self.angle = angle
+        self.v = v #Répartition des neutrons rapides et lents
         self.taille = 3
         self.actu_vitesse()
     
@@ -127,8 +127,10 @@ class Mode2StateModel(ModeStateModel):
 
             if 0 <= grid_x < cols and 0 <= grid_y < rows: #On verifie que le neutron soit bien dans l'écran
                 if self.grid[grid_x, grid_y, 0] <= T_ev: #Si la case contient de l'eau liquide
-                    interact_rapide = random.choices([0, 1], weights=[100-p_int_rapide, p_int_rapide])[0] #On lance les dés pour l'intéraction rapide
-                    absorption_lent = random.choices([0, 1], weights=[100-p_abs_lente, p_abs_lente])[0] #Idem pour l'absorption lente
+                    interact_rapide = self.fastint_table[self.fastint_idx]
+                    absorption_lent = self.slowint_table[self.slowint_idx]
+                    self.fastint_idx = (self.fastint_idx + 1)%self.rdt_size
+                    self.slowint_idx = (self.slowint_idx + 1)%self.rdt_size
 
                     if n.isFast and interact_rapide == 1:
                         self.fast_interact_count +=1
@@ -177,14 +179,11 @@ class Mode2StateModel(ModeStateModel):
         self.E_utile += n_ref*eta_p*m_eau*C_me*dT_p
 
     def save_data(self) :
-        step = fps//self.res #On calcule le pas de frame correspondant à la résolution souhaitée (<= fps nécessairement)
-        t_idx = self.loc_frame_count//step #Compteur entier de pas de temps
+        t_arrondi = (self.sim_time*self.res//self.res)*self.res #On arrondit le temps simulé à la résolution voulue
 
-        t_act = t_idx / self.res #On calcule le temps actuel en secondes
-
-        if not self.data_list or self.data_list[-1][0] != t_act: #On veut une liste vide ou attendre qu'on soit à la sec d'après
+        if not self.data_list or abs(self.data_list[-1][0] - t_arrondi) > 1e-6 : #On veut une liste vide ou attendre qu'on soit à la sec d'après (on regarde si on est assez différent pour cela)
             self.data_list.append([
-                t_act, #Le temps actuel (en s)
+                t_arrondi, #Le temps actuel (en s)
                 np.mean(self.grid[:,:,0]), #La température moyenne actuelle (en K)
                 self.E_utile, #L'énergie produite jusqu'à maintenant (en J)
                 self.fast_interact_count, #Nombre d'intéractions rapides (AD)
@@ -207,25 +206,37 @@ class Mode2StateModel(ModeStateModel):
         pygame.display.set_caption("Simulation de réacteur nucléaire - Mode 2")
         self.rightMenu = RightMenu()
         self.rightMenu.prepare_menu()
+
         self.grid = np.zeros(
             (cols, rows, 2)
         )  # Initialisation de la grille, chaque case contient un vecteur (température, temps)
         self.grid[:, :, 0] = T0  # Remplissage des températures
-        self.neutrons = []
+
         self.sim_speed = 1
-        self.loc_frame_count = 0 #Initialisation du compteur de frame
-        self.res = 10 #Résolution temporelle pour l'enregistrement des données (10 = décisecondes, 100 centisecondes...)
+        self.sim_time = 0 #Initialisation du chrono de simulation
+
+        self.neutrons = []
         self.n_per_sec = 100 #Nombre de neutrons générés chaque seconde
         self.neutron_acc = 0 #Initialisation de l'accumulateur des fractions de neutrons
-        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur
+        self.rdt_size = 10000 #On initialise la taille du tableau pour notre génération aléatoire
+        self.angle_idx = 0 #On initialise le pointeur pour l'angle
+        self.vit_idx = 0 #Idem pour la vitesse
+        self.fastint_idx = 0
+        self.slowint_idx = 0
+        self.angle_table = np.random.uniform(0, 2*np.pi, self.rdt_size) #On génère notre tableau d'angles aléatoires 
+        self.vit_table = np.random.choice([1, 3], size = self.rdt_size, p = [(100-p_n0_rapides)/100, p_n0_rapides/100]) #Idem pour les vitesses
+        self.fastint_table = np.random.choice([0, 1], size = self.rdt_size, p = [(100-p_int_rapide)/100, p_int_rapide/100]) #On lance les dés pour l'intéraction rapide
+        self.slowint_table = np.random.choice([0, 1], size = self.rdt_size, p = [(100-p_abs_lente)/100, p_abs_lente/100]) #Idem pour l'absorption lente
+
         self.data_list = [] #Initialisation du tableau de données
+        self.res = 0.1 #Résolution temporelle pour l'enregistrement des données (0.1 = décisecondes, 0.01 = centisecondes...)
+        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur 
         self.fast_interact_count = 0 #Initilisation du compteur d'intéractions rapides
         self.slow_interact_count = 0 #... lentes
         self.emitted_neutrons_count = 0 #Initilisation du compteur de neutrons émis
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
 
     def update(self, events, setMode):
-        self.loc_frame_count += 1 #On incrémente le compteur de frame
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -234,15 +245,18 @@ class Mode2StateModel(ModeStateModel):
                     self.sim_speed = max(1, self.sim_speed - 1)
 
         for _ in range(self.sim_speed):
+            self.sim_time += delta_t #On incrémente le compteur de temps
             # Création des neutrons
             if pygame.mouse.get_pressed()[0]:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                self.neutron_acc += self.n_per_sec / fps
+                self.neutron_acc += self.n_per_sec*delta_t
 
                 while self.neutron_acc >= 1 : #Tant qu'on a accumulé au moins 1 neutron entier, on le crée
-                    self.neutrons.append(Neutron(mouse_x, mouse_y))
+                    self.neutrons.append(Neutron(mouse_x, mouse_y, self.angle_table[self.angle_idx], self.vit_table[self.vit_idx]))
                     self.emitted_neutrons_count += 1
                     self.neutron_acc -= 1 #On en retire un pour pas le re créer
+                    self.angle_idx = (self.angle_idx + 1)%self.rdt_size
+                    self.vit_idx = (self.vit_idx + 1)%self.rdt_size
 
             # Déplacement des neutrons
             for n in self.neutrons[:]:

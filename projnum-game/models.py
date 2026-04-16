@@ -39,7 +39,7 @@ rouge = (255, 50, 50)
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
-
+delta_t = 0.01 #Écart temporel d'une itération à l'autre (en s)
 
 # Variables physiques de la modélisation
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
@@ -49,7 +49,7 @@ Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de
 
 c_s = cell_size*pxTom #Taille réelle des cellules
 v_b = 0.06 #Vitesse réelle des bulles en m/s
-beta = int(c_s*fps/(v_b*10)) #Tick pour la remontée des bulles, *10 pour la simu
+beta = int(c_s/(v_b*10*delta_t)) #Tick pour la remontée des bulles, *10 pour la simu
 
 # Propriétés eau
 T0 = CToK + 20 #Température initiale de l'eau = température ambiante donc 25°C
@@ -78,7 +78,6 @@ Palier2 = T0+2*Interval #Second palier donc de 40°C à 60°C
 Palier3 = T0+3*Interval #Second palier donc de 40°C à 60°C
 
 # Thermo
-delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
 k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'interface supérieure
 k2 = 2.4e-5*Gamma #Constante pour la loi de Fourier - conduction au sein du bassin
 
