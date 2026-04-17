@@ -179,7 +179,7 @@ class Mode2StateModel(ModeStateModel):
         self.E_utile += n_ref*eta_p*m_eau*C_me*dT_p
 
     def save_data(self) :
-        t_arrondi = (self.sim_time*self.res//self.res)*self.res #On arrondit le temps simulé à la résolution voulue
+        t_arrondi = (self.sim_time//self.res)*self.res #On arrondit le temps simulé à la résolution voulue
 
         if not self.data_list or abs(self.data_list[-1][0] - t_arrondi) > 1e-6 : #On veut une liste vide ou attendre qu'on soit à la sec d'après (on regarde si on est assez différent pour cela)
             self.data_list.append([
@@ -278,8 +278,11 @@ class Mode2StateModel(ModeStateModel):
             # Remontée des bulles de vapeur
             self.raiseGasBubble()
 
+            #Enregistrement des données
+            self.save_data()
+
         self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed, self.E_utile)
-        self.save_data()
+        
 
     def paint(self, screen):
         # Affichage du menu de droite

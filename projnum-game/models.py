@@ -45,7 +45,7 @@ delta_t = 0.01 #Écart temporel d'une itération à l'autre (en s)
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
 JTokWh = 2.77778e-7 #Pour convertir des Joules en kWh
-Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 10s réelles
+Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 50s réelles
 
 c_s = cell_size*pxTom #Taille réelle des cellules
 v_b = 0.06 #Vitesse réelle des bulles en m/s
