@@ -1,8 +1,9 @@
 from numpy._typing import NDArray
-import pygame
 import random
+import pygame
 import numpy as np
 from models import *
+from physics import *
 
 
 class RightMenu:
@@ -165,24 +166,6 @@ class Mode1StateModel(ModeStateModel):
                             )  # Le neutron lent est quant à lui absorbé donc il disparait
                             continue
 
-    def handleHeatTransfer(self):
-        T = self.grid[:, :, 0]  # On isole la matrice des températures
-        diff = np.zeros_like(T)  # On génère une matrice qui contiendra les flux
-
-        diff[:-1, :] += T[1:, :] - T[:-1, :]  # Flux vertical du dessous
-        diff[1:, :] += T[:-1, :] - T[1:, :]  # Flux vertical du dessus
-        diff[:, :-1] += T[:, 1:] - T[:, :-1]  # Flux horizontal de la droite
-        diff[:, 1:] += T[:, :-1] - T[:, 1:]  # Flux horizontal de la gauche
-
-        coeff_conduction = min(
-            0.24, k2
-        )  # On plafonne à 1/4, la limite de k2 pour 4 voisines
-        isEv = (T < T_ev).astype(
-            float
-        )  # Ici on renvoie 0 si c'est de la vapeur et 1 si c'est liquide, car conduction que pour le liquide
-
-        self.grid[:, :, 0] += coeff_conduction * diff * isEv  # On met à jour
-
     # ====== Main functions ======
 
     def prepare(self, screen):
@@ -226,7 +209,7 @@ class Mode1StateModel(ModeStateModel):
             self.interactNeutronsWithWater()
 
             # Transfert de chaleur entre les cases d'eau
-            self.handleHeatTransfer()
+            handleHeatTransfer(self.grid[:, :, 0])
 
         self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed)
 

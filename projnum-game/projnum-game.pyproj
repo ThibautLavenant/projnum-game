@@ -31,6 +31,7 @@
     <Compile Include="mode2.py" />
     <Compile Include="models.py" />
     <Compile Include="mode1.py" />
+    <Compile Include="physics.py" />
     <Compile Include="projnum_game.py" />
   </ItemGroup>
   <ItemGroup>
