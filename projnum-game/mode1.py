@@ -4,6 +4,7 @@ import pygame
 import numpy as np
 from models import *
 from physics import *
+from simpleRandom import *
 
 
 class RightMenu:
@@ -96,10 +97,8 @@ class Neutron:
         self.x = x
         self.y = y
         self.isFast = True
-        self.angle = random.uniform(0, 2 * np.pi)
-        self.v = random.choices([1, 3], weights=[100 - p_n0_rapides, p_n0_rapides])[
-            0
-        ]  # Répartition des neutrons rapides et lents
+        self.angle = getRandomAngle()
+        self.v = getRandomSpeed()  # Répartition des neutrons rapides et lents
         self.taille = 3
         self.actu_vitesse()
 
@@ -117,7 +116,7 @@ class Neutron:
         self.y += self.vy
 
     def dessiner(self, surface):
-        pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), self.taille)
+        pygame.draw.rect(surface, self.color, (int(self.x), int(self.y), self.taille, self.taille))
 
 
 class Mode1StateModel(ModeStateModel):
@@ -139,32 +138,28 @@ class Mode1StateModel(ModeStateModel):
                 if (
                     self.grid[grid_x, grid_y, 0] <= T_ev
                 ):  # Si la case contient de l'eau liquide
-                    interact_rapide = random.choices(
-                        [0, 1], weights=[100 - p_int_rapide, p_int_rapide]
-                    )[
-                        0
-                    ]  # On lance les dés pour l'intéraction rapide
-                    absorption_lent = random.choices(
-                        [0, 1], weights=[100 - p_abs_lente, p_abs_lente]
-                    )[
-                        0
-                    ]  # Idem pour l'absorption lente
 
-                    if n.isFast and interact_rapide == 1:
-                        self.grid[grid_x, grid_y, 0] += (
-                            q_ad_fast * (Ec_fast - Ec_slow) / (m_eau * C_me)
-                        )  # Chaleur fournie par le neutron rapide
-                        n.v = 1  # Ralentissement du neutron rapide
-                        n.actu_vitesse()
-                    elif not n.isFast and absorption_lent == 1:
-                        self.grid[grid_x, grid_y, 0] += (
-                            q_ad_slow * Ec_slow / (m_eau * C_me)
-                        )  # Chaleur fournie par le neutron lent (concrètement négligeable)
-                        if n in self.neutrons:
-                            self.neutrons.remove(
-                                n
-                            )  # Le neutron lent est quant à lui absorbé donc il disparait
-                            continue
+                    if n.isFast:
+                        # On lance les dés pour l'intéraction rapide
+                        interact_rapide = getRandomInteractRapide()  
+                        if interact_rapide == 1:
+                            self.grid[grid_x, grid_y, 0] += (
+                                q_ad_fast * (Ec_fast - Ec_slow) / (m_eau * C_me)
+                            )  # Chaleur fournie par le neutron rapide
+                            n.v = 1  # Ralentissement du neutron rapide
+                            n.actu_vitesse()
+                    elif not n.isFast:
+                        # Idem pour l'absorption lente
+                        absorption_lent = getRandomInteractLent()  
+                        if absorption_lent == 1:
+                            self.grid[grid_x, grid_y, 0] += (
+                                q_ad_slow * Ec_slow / (m_eau * C_me)
+                            )  # Chaleur fournie par le neutron lent (concrètement négligeable)
+                            if n in self.neutrons:
+                                self.neutrons.remove(
+                                    n
+                                )  # Le neutron lent est quant à lui absorbé donc il disparait
+                                continue
 
     # ====== Main functions ======
 
@@ -177,7 +172,7 @@ class Mode1StateModel(ModeStateModel):
         )  # Initialisation de la grille, chaque case contient un vecteur (température, temps)
         self.grid[:, :, 0] = T0  # Remplissage des températures
         self.neutrons = []
-        self.sim_speed = 1
+        self.sim_speed = 30
 
     def update(self, events, setMode):
         for event in events:
@@ -187,29 +182,29 @@ class Mode1StateModel(ModeStateModel):
                 elif event.key == pygame.K_DOWN:
                     self.sim_speed = max(1, self.sim_speed - 1)
 
-        for _ in range(self.sim_speed):
-            # Création des neurons
-            if pygame.mouse.get_pressed()[0]:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
+        # Création des neutrons
+        if pygame.mouse.get_pressed()[0]:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            for _ in range(self.sim_speed):
                 self.neutrons.append(
                     Neutron(mouse_x, mouse_y)
                 )  # On ajoute les neutrons en dessous du curseur
 
-            # Déplacement des neutrons
-            for n in self.neutrons[:]:
-                n.deplacer()
+        # Déplacement des neutrons
+        for n in self.neutrons[:]:
+            n.deplacer()
 
-                if (
-                    n.x < 0 or n.x > width - rightMenuSize or n.y < 0 or n.y > height
-                ):  # Si le neutron sort de l'écran on le supprime
-                    self.neutrons.remove(n)
-                    continue
+            if (
+                n.x < 0 or n.x > width - rightMenuSize or n.y < 0 or n.y > height
+            ):  # Si le neutron sort de l'écran on le supprime
+                self.neutrons.remove(n)
+                continue
 
-            # Intéraction des neutrons avec les cases d'eau
-            self.interactNeutronsWithWater()
+        # Intéraction des neutrons avec les cases d'eau
+        self.interactNeutronsWithWater()
 
-            # Transfert de chaleur entre les cases d'eau
-            handleHeatTransfer(self.grid[:, :, 0])
+        # Transfert de chaleur entre les cases d'eau
+        handleHeatTransfer(self.grid[:, :, 0])
 
         self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed)
 

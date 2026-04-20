@@ -33,6 +33,7 @@
     <Compile Include="mode1.py" />
     <Compile Include="physics.py" />
     <Compile Include="projnum_game.py" />
+    <Compile Include="simpleRandom.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
