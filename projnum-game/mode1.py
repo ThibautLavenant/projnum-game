@@ -106,9 +106,6 @@ class Neutron:
         self.vx = self.v * np.cos(self.angle)
         self.vy = self.v * np.sin(self.angle)
         self.isFast = self.v == 3
-        self.v_real = (
-            (2 * Ec_fast / m_n) ** 0.5 if self.isFast else (2 * Ec_slow / m_n) ** 0.5
-        )
         self.color = violet if self.isFast else blanc
 
     def deplacer(self):

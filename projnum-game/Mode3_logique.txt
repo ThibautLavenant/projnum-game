@@ -1,0 +1,33 @@
+- On génère une grille sous forme d'une matrice qui peut contenir les valeurs suivantes :
+
+	- 0 si la case est vide
+	- 0.5 si la case est une case de réserve de combustible
+	- 1 si la case contient du combustible
+	- 1.5 si la case contient du Xénon
+
+La valeur de base est 0, et on remplit aléatoirement notre grille avec une certaine concentration de combustible
+
+- Initialement on génère C_comb% d'emplacements contenant du combustible fissile (ici de l'Uranium) et on alloue C_res% des emplacements restants
+à la réserve qui vont donc permettre d'assurer la réinsertion du combustible
+
+- Initialement on cherche la 1ère cellule la plus à gauche (c'est purement arbitraire) et on tire un neutron d'allumage dessus en appuyant sur la touche ENTREE
+
+- Quand un neutron lent atteint une cellule de combustible il a une probabilité p_fission (ici 100%) d'être absorbé et quand il y a absorption :
+	- Le neutron initial disparait
+	- Le combustible est consommé et peut :
+		- Devenir du Xénon 135 avec une probabilité p_conv_Xe (1 --> 1.5)
+		- Disparaitre sinon et devenir une réserve (1 --> 0.5)
+	- Du combustible est réintroduit aléatoirement
+	- 3 neutrons rapides apparaissent avec des directions aléatoires
+
+- Quand un neutron lent atteint une cellule de Xénon il a une probabilité p_Xe_abs d'être absorbé et cela amène à :
+	- La disparition du neutron initial
+	- La destruction du Xénon et la cellule devient ainsi une réserve (1.5 --> 0.5)
+
+- Pour la modération on se dit que les bords droit et gauche sont des modérateurs, les neutrons rapides rebondissent dessus par collision élastique et sont ralentis
+
+
+Dans models, introduction d'une fonction qui permet le passage des coordonnées de cellule (i, j) vers les coordonnées cartésiennes (x, y) et inversement :
+
+cellTocoord(i, j, 0) fait le passage de cell vers coord
+cellTocoord(x, y, 1) fait le passage inverse

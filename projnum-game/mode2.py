@@ -97,7 +97,6 @@ class Neutron:
         self.vx = self.v * np.cos(self.angle)
         self.vy = self.v * np.sin(self.angle)
         self.isFast = (self.v == 3)
-        self.v_real = (2*Ec_fast/m_n)**0.5 if self.isFast else (2*Ec_slow/m_n)**0.5
         self.color = violet if self.isFast else blanc
         
     def deplacer(self):
@@ -188,7 +187,7 @@ class Mode2StateModel(ModeStateModel):
         if self.data_list: #On regarde si la liste n'est pas vide
             final_array = np.array(self.data_list)
             header = "Temps(s), Température(K), Énergie (J), IntRapides (AD), IntLentes (AD), IntTot(AD), NeutÉmis (AD)"
-            np.savetxt("Datas/sim_data.txt", final_array, delimiter = ",", header=header, comments='')
+            np.savetxt("Datas/sim_data_mode2.txt", final_array, delimiter = ",", header=header, comments='')
 
     # ====== Main functions ======
 

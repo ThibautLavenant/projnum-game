@@ -29,8 +29,8 @@ def setMode(modeNum):
         activeModeState = Mode1StateModel()
     elif modeNum == 2:
         activeModeState = Mode2StateModel()
-    # elif modeNum == 3:
-    #     activeModeState = Mode3StateModel()
+    elif modeNum == 3:
+        activeModeState = Mode3StateModel()
     # elif modeNum == 4:
     #     activeModeState = Mode4StateModel()
     # elif modeNum == 5:

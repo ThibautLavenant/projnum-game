@@ -36,6 +36,10 @@ jaune = (255, 255, 0)
 orange = (255, 165, 0)
 rouge = (255, 50, 50)
 
+vertUr = (52, 201, 36) #Vert pomme pour l'Uranium
+grisVi = (158, 158, 158) #Gris souris pour le vide
+violetXe = (121, 28, 248) #Indigo pour le Xénon
+
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
@@ -62,6 +66,10 @@ m_eau = rho_eau*(cell_size*pxTom)**3 #Masse d'eau dans une cellule
 m_n = 1.6749275e-27 #Masse d'un neutron en kg
 Ec_fast = 3e-13 #Énergie cinétique en J des neutrons rapides de l'ordre de 2MeV
 Ec_slow = 4e-21 #Énergie cinétique en J des neutrons lents de l'ordre de 0.025eV
+v_real_fast = (2*Ec_fast/m_n)**0.5
+v_real_slow = (2*Ec_slow/m_n)**0.5
+v_sim_fast = 3
+v_sim_slow = 1
 nbr_nav = 5 #Nombre de neutrons intéragissant avant évaporation --> pour déterminer le facteur d'adaptation voir ligne suivante
 q_ad_slow = m_eau*C_me*(T_ev-T0)/(Ec_slow*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
 q_ad_fast = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la simu --> permet de chauffer plus vite par les neutrons thermiques
@@ -70,6 +78,9 @@ q_ad_fast = m_eau*C_me*(T_ev-T0)/(Ec_fast*nbr_nav) #Facteur d'adaptation pour la
 p_int_rapide = 10 #Probabilité d'intéraction des neutrons rapides avec l'eau en %
 p_abs_lente = 0.1*p_int_rapide #Probabilité d'absorption des neutrons lents en %
 p_n0_rapides = 50 #Proportion de neutrons rapides à l'apparition en %
+p_fission = 100 #Probabilité de fission par les neutrons lents en %
+p_Xe_abs = 100 #Probabilité d'absorption des neutrons lents par le Xénon en %
+p_conv_Xe = 10 #Probabilité de conversion du combustible fissioné en Xénon en %
 
 # Paliers de température
 Interval = (T_ev-T0)/4 #Étendue divisé par le nbr d'intervales souhaités
@@ -87,3 +98,9 @@ dT_max_p = 0.1 #Nbr de Kelvin retirés chaque seconde dans le cas où alpha = 10
 T_min_p = 50+CToK #Température minimale de refroidissement par pompage
 eta_p = 0.33 #Rendement typique d'un réacteur à eau pressurisée
 dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
+
+def cellTocoord(c, r, param): #c --> colonne (x) et r --> ligne (y)
+    if param == 0 :
+        return c*cell_size+cell_size//2, r*cell_size+cell_size//2 #Conversion de cellule vers coordonnées
+    else:
+        return (int(c//cell_size), int(r//cell_size)) #Conversion des coordonnées vers cellule

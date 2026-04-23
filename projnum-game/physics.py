@@ -3,8 +3,8 @@ import numpy as np
 
 def handleHeatTransfer(T):
     # On calcule le transfert thermique dans chaque dirrection
-    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * 60400 * (1/fps)
-    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * 60400 * (1/fps)
+    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * 60400 * delta_t
+    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * 60400 * delta_t
     # On applique le transfert d'énergie en positif et en négatif pour le départ et l'arrivée
     diff = np.zeros_like(T)
     diff[1:, :] += energy_right
