@@ -161,10 +161,6 @@ class Mode2StateModel(ModeStateModel):
         self.n_per_sec = 100 #Nombre de neutrons générés chaque seconde
         self.neutron_acc = 0 #Initialisation de l'accumulateur des fractions de neutrons
         self.rdt_size = 10000 #On initialise la taille du tableau pour notre génération aléatoire
-        self.angle_idx = 0 #On initialise le pointeur pour l'angle
-        self.vit_idx = 0 #Idem pour la vitesse
-        self.fastint_idx = 0
-        self.slowint_idx = 0
         self.angle_table = np.random.uniform(0, 2*np.pi, self.rdt_size) #On génère notre tableau d'angles aléatoires 
         self.vit_table = np.random.choice([1, 3], size = self.rdt_size, p = [(100-p_n0_rapides)/100, p_n0_rapides/100]) #Idem pour les vitesses
         self.fastint_table = np.random.choice([0, 1], size = self.rdt_size, p = [(100-p_int_rapide)/100, p_int_rapide/100]) #On lance les dés pour l'intéraction rapide

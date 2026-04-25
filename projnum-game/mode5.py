@@ -127,7 +127,7 @@ class Mode5StateModel(ModeStateModel):
     # ====== Main functions ======
 
     def prepare(self, screen):
-        pygame.display.set_caption("Simulation de réacteur nucléaire - Mode 3")
+        pygame.display.set_caption("Simulation de réacteur nucléaire - Mode 5")
         self.rightMenu = RightMenu()
         self.rightMenu.prepare_menu()
 
@@ -282,7 +282,15 @@ class Mode5StateModel(ModeStateModel):
                         color = vertUr
                     elif self.grid[i, j] == XE_135: #Si Xé
                         color = violetXe
-                pygame.draw.circle(screen,color,cellTocoord(i, j, 0), int(0.8*cell_size//2))
+                pygame.draw.circle(
+                    screen,
+                    color,
+                    (
+                        (i * cell_size) + (cell_size - border) / 2,
+                        (j * cell_size) + (cell_size - border) / 2,    
+                    ),
+                    int(cell_size//4)
+                )
 
         # affichage des neutrons
         for i in range(self.neutrons.nb_neutron):
