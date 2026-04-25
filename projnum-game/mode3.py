@@ -30,14 +30,19 @@ class RightMenu:
         self.nbNeutron_rect = self.nbNeutron_surface.get_rect(topleft=(610, posY))
         posY += self.spacing
         self.speed_surface = self.font.render("Vitesse simulation :", True, (255, 255, 255))
-        self.speed_rect = self.speed_surface.get_rect(topleft=(610, posY))  
+        self.speed_rect = self.speed_surface.get_rect(topleft=(610, posY))
+        posY += self.spacing
+        self.k_surface = self.font.render("Facteur k :", True, (255, 255, 255))
+        self.k_rect = self.k_surface.get_rect(topleft=(610, posY))
 
-        self.nbNeutron = 0;
+        self.nbNeutron = 0
         self.sim_speed_val = 1
+        self.k_val = 0
 
     def display_menu(self, screen):
         screen.blit(self.nbNeutron_surface, self.nbNeutron_rect)
         screen.blit(self.speed_surface, self.speed_rect)
+        screen.blit(self.k_surface, self.k_rect)
         
         posY = self.start; #pix
         nbNeutron_surface = self.font.render(f"{self.nbNeutron:.0f}", True, (255, 255, 255))
@@ -47,10 +52,15 @@ class RightMenu:
         speed_val_surface = self.font.render(f"{self.sim_speed_val}", True, (255, 255, 255))
         speed_val_rect = speed_val_surface.get_rect(topright=(790, posY))
         screen.blit(speed_val_surface, speed_val_rect)
+        posY += self.spacing
+        k_val_surface = self.font.render(f"{self.k_val:.2f}", True, (255, 255, 255))
+        k_val_rect = k_val_surface.get_rect(topright=(790, posY))
+        screen.blit(k_val_surface, k_val_rect)
 
-    def computeMetrics(self, neutrons, current_speed):
+    def computeMetrics(self, neutrons, current_speed, k):
         self.nbNeutron = len(neutrons)
         self.sim_speed_val = current_speed
+        self.k_val = k
 
 class Neutron:
     def __init__(self, x, y, angle, v):
@@ -89,12 +99,14 @@ class Mode3StateModel(ModeStateModel):
                     self.fission_prob_idx = (self.fission_prob_idx + 1)%self.rdt_size
 
                     if fission_prob == 1: #Si la fission s'effectue
+                        self.fission_count +=1 #On incrémente le compteur de fission
+                        self.fission_count_k += 1 #On incrémente le compteur de fission pour k
+                        self.E_prod_fission += E_lib_fission #On incrémente l'énergie produite par la fission
 
                         conv_Xe_prob = self.conv_Xe_prob_table[self.conv_Xe_prob_idx]
                         self.conv_Xe_prob_idx = (self.conv_Xe_prob_idx+1)%self.rdt_size
 
                         if conv_Xe_prob == 0 : #Si la conversion en Xénon a échoué
-                            self.fission_count +=1 #On incrémente le compteur de fission
                             res = np.argwhere(self.grid == 0.5) #On trouve les (i, j) pour les cases de réserve
 
                             if len(res) > 0: #On vérifie s'il reste des cases de réserve dispo
@@ -106,9 +118,10 @@ class Mode3StateModel(ModeStateModel):
 
                             if n in self.neutrons:
                                 self.neutrons.remove(n)
+                                self.disap_count_k += 1 #On ajoute aux neutrons disparus
 
                             pos_px = cellTocoord(grid_x, grid_y, 0) #On prend la position x,y de la cellule
-                            for _ in range(3) : #On émet 3 neutrons rapides avec des directions aléatoires
+                            for _ in range(neut_gen_fission) : #On émet neut_gen_fission neutrons rapides avec des directions aléatoires
                                 angle = self.angle_table[self.angle_idx]
                                 self.angle_idx = (self.angle_idx + 1)%self.rdt_size
                                 self.neutrons.append(Neutron(pos_px[0], pos_px[1], angle, v_sim_fast))
@@ -125,6 +138,7 @@ class Mode3StateModel(ModeStateModel):
 
                             if n in self.neutrons:
                                 self.neutrons.remove(n)
+                                self.disap_count_k += 1 #On ajoute aux neutrons disparus
 
                             pos_px = cellTocoord(grid_x, grid_y, 0) #On prend la position x,y de la cellule
                             for _ in range(3) : #On émet 3 neutrons rapides avec des directions aléatoires
@@ -141,6 +155,7 @@ class Mode3StateModel(ModeStateModel):
                         self.grid[grid_x, grid_y] = 0.5 #La case devient une réserve
                         if n in self.neutrons:
                             self.neutrons.remove(n)
+                            self.disap_count_k += 1 #On ajoute aux neutrons disparus
 
     def save_data(self) :
         t_arrondi = (self.sim_time//self.res)*self.res #On arrondit le temps simulé à la résolution voulue
@@ -149,17 +164,20 @@ class Mode3StateModel(ModeStateModel):
             self.data_list.append([
                 t_arrondi, #Le temps actuel (en s)
                 self.neutrons_count, #Nombre actuel de neutrons (AD)
-                self.nb_thermiques, #Nombre actuel de neutrons thermiques (AD) 
+                self.nb_thermiques, #Nombre actuel de neutrons thermiques (AD)
+                self.nb_fast, #Nombre actuel de neutrons rapides (AD)
                 self.fission_count, #Nombre d'intéractions de fission (AD)
                 self.Xe_abs_count, #Nombre d'intéractions avec du Xénon (AD)
                 (self.fission_count + self.Xe_abs_count), #Nombre total d'intéractions (AD)
                 self.notInteract_count, #Nombre total de neutrons n'ayant pas intéragit (AD)
+                self.E_prod_fission*JToMeV, #Énergie totale produite par fission (MeV)
+                self.C_comb_count, #Concentration en combustible en %
             ])
 
     def export_datas(self):
         if self.data_list: #On regarde si la liste n'est pas vide
             final_array = np.array(self.data_list)
-            header = "Temps(s), NeutInside(AD), NeutTherm(AD), IntFission(AD), IntXenon(AD), IntTot(AD), TotNonInt(AD)"
+            header = "Temps(s), NeutInside(AD), NeutTherm(AD), NeutFast(AD), IntFission(AD), IntXenon(AD), IntTot(AD), TotNonInt(AD), EFiss(MeV), Ccomb(%)"
             np.savetxt("Datas/sim_data_mode3.txt", final_array, delimiter = ",", header=header, comments='')
 
     # ====== Main functions ======
@@ -176,8 +194,8 @@ class Mode3StateModel(ModeStateModel):
         self.n_comb = int(self.grid.size*self.C_comb/100) #Nombre de cases contenant du combustible
         self.C_res = 50 #Concentration de réserve en %
         self.n_res = int(self.C_res/100*(self.grid.size-self.n_comb)) #Nombre de cases en réserve pour réinsertion du combustible (ici 10% des cases restantes)
-        self.n_tot_com = self.n_comb + self.n_res
-        self.rep_init = np.random.choice(self.grid.size, self.n_tot_com, replace = False) #On tire C_comb% de cases dans la maille
+        self.n_tot_comb = self.n_comb + self.n_res
+        self.rep_init = np.random.choice(self.grid.size, self.n_tot_comb, replace = False) #On tire C_comb% de cases dans la maille
         self.grid.flat[self.rep_init[:-self.n_res]] = 1
         self.grid.flat[self.rep_init[-self.n_res:]] = 0.5
         self.res_idx_table = np.random.permutation(np.arange(self.n_res)) #On fait un tableau qui mélange les indices qui localisent les cases de réserve
@@ -205,6 +223,11 @@ class Mode3StateModel(ModeStateModel):
         self.nb_thermiques = 0 #Initilisation du compteur de neutrons thermiques (lents)
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
         self.Xe_abs_count = 0 #Initialisation du compteur de neutrons absorbés par le Xénon
+        self.fact_k = 0 #Initilisation du facteur k
+        self.disap_count_k = 0 #Initialisation du compteur de neutrons disparus pour k
+        self.fission_count_k = 0 #Initilisation du compteur d'interactions de fission pour k
+        self.E_prod_fission = 0 #Initialisation du compteur d'énergie produite par fission
+        self.C_comb_count = self.C_comb #Initilisation du compteur de combustible
 
     def update(self, events, setMode):
         for event in events:
@@ -225,7 +248,15 @@ class Mode3StateModel(ModeStateModel):
         for _ in range(self.sim_speed):
             self.neutrons_count = len(self.neutrons)
             self.nb_thermiques = sum(1 for n in self.neutrons if not n.isFast)
+            self.nb_fast = sum(1 for n in self.neutrons if n.isFast)
+            self.C_comb_count = 100*np.count_nonzero(self.grid[:, :] == 1).size/self.grid.size #Concentration en combustible en %
             self.sim_time += delta_t #On incrémente le compteur de temps
+
+            if self.disap_count_k >= n_k :
+                self.fact_k = (self.fission_count_k*neut_gen_fission)/self.disap_count_k #Calcul de k : nb de neutrons produits par les n_k précédents/les n_k précédents
+                self.fission_count_k = 0
+                self.disap_count_k = 0
+                self.disap_count_k = 0
 
             # Déplacement des neutrons
             for n in self.neutrons[:]:
@@ -234,6 +265,7 @@ class Mode3StateModel(ModeStateModel):
                 if (n.y < 0 or n.y > height): # Si le neutron sort de l'écran verticalement on le supprime
                     self.neutrons.remove(n)
                     self.notInteract_count += 1
+                    self.disap_count_k += 1 #On ajoute aux neutrons disparus
                     
                 elif n.x < 0: #S'il sort à gauche il est ralentit et rebondit
                     n.x = 0 #On place bien le neutron sur le bord gauche
@@ -251,7 +283,7 @@ class Mode3StateModel(ModeStateModel):
             #Enregistrement des données
             self.save_data()      
 
-        self.rightMenu.computeMetrics(self.neutrons, self.sim_speed)
+        self.rightMenu.computeMetrics(self.neutrons, self.sim_speed, self.fact_k)
 
     def paint(self, screen):
         # Affichage du menu de droite

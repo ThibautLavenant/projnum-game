@@ -49,6 +49,7 @@ delta_t = 0.01 #Écart temporel d'une itération à l'autre (en s)
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
 CToK = 273.15 #Conversion Celsius-Kelvin
 JTokWh = 2.77778e-7 #Pour convertir des Joules en kWh
+JToMeV = 6.242e12 #Pour convertir des Joules en MeV
 Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 50s réelles
 
 c_s = cell_size*pxTom #Taille réelle des cellules
@@ -98,6 +99,11 @@ dT_max_p = 0.1 #Nbr de Kelvin retirés chaque seconde dans le cas où alpha = 10
 T_min_p = 50+CToK #Température minimale de refroidissement par pompage
 eta_p = 0.33 #Rendement typique d'un réacteur à eau pressurisée
 dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
+
+# Fission
+neut_gen_fission = 3 #Nombre de neutrons générés par une fission
+E_lib_fission = 1.95e-11 #Énergie libérée lors de la fission de l'uranium 235
+n_k = 100 #Nombre de neutrons évalués pour déterminer k
 
 def cellTocoord(c, r, param): #c --> colonne (x) et r --> ligne (y)
     if param == 0 :
