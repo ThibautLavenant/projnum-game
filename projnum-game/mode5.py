@@ -185,7 +185,7 @@ class Mode5StateModel(ModeStateModel):
                     # previous n_Comb
                     prev_n_comb = int(self.grid.size*self.C_comb/100)
                     # decrease C_comb
-                    if (self.C_comb >= 15):
+                    if (self.C_comb >= 55):
                         self.C_comb = self.C_comb - 5
                     else :
                         self.C_comb = self.C_comb - 1
@@ -202,7 +202,7 @@ class Mode5StateModel(ModeStateModel):
                     # previous n_Comb
                     prev_n_comb = int(self.grid.size*self.C_comb/100)
                     # decrease C_comb
-                    if (self.C_comb >= 10):
+                    if (self.C_comb >= 50):
                         self.C_comb = self.C_comb + 5
                     else :
                         self.C_comb = self.C_comb + 1

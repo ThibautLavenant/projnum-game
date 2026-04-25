@@ -28,6 +28,11 @@ class Neutrons:
 
     # Ajoute un neutron dans le tableau numpy
     def addNeutron(self, x, y):
+        vitesse = getRandomSpeed()  # Répartition des neutrons rapides et lents
+        self.addNeutronWithSpeed(x, y, vitesse)
+
+    # Ajoute un neutron dans le tableau numpy
+    def addNeutronWithSpeed(self, x, y, vitesse):
         # Pour garder une taille fixe en mémoire
         if (self.nb_neutron >= self.max_neutron):
             return;
@@ -35,9 +40,14 @@ class Neutrons:
         # On ajoute toujours à la position en cours (nbNeutron)
         self.pos[self.nb_neutron] = [x, y]
         self.angle[self.nb_neutron] = getRandomAngle()
-        vitesse = getRandomSpeed()  # Répartition des neutrons rapides et lents
         self.actu_vitesse(vitesse, self.nb_neutron)
         self.nb_neutron += 1
+
+    def addSlowNeutron(self, x, y):
+        self.addNeutronWithSpeed(x, y, 1)
+
+    def addFastNeutron(self, x, y):
+        self.addNeutronWithSpeed(x, y, 3)
 
     def removeNeutron(self, index):
         if index < 0 or index >= self.nb_neutron:
@@ -57,6 +67,47 @@ class Neutrons:
             ):  # Si le neutron sort de l'écran on le supprime
                 self.removeNeutron(i)
                 removed = removed + 1
+        return removed
+
+    def deplacerWithConfinment(self):
+        removed = 0;
+        self.pos[:,:] += self.v[:, :2]
+
+        for i in range(self.nb_neutron):
+            # Si neutron lent => est absorbé par le confinement
+            if not self.v[i, 2] and (
+                self.pos[i, 0] < 0 or self.pos[i, 0] > width - rightMenuSize 
+                or self.pos[i, 1] < 0 or self.pos[i, 1] > height
+            ):  # Si le neutron sort de l'écran on le supprime
+                self.removeNeutron(i)
+                removed = removed + 1
+
+            # Si neutron rapide, est renvoyé et ralenti
+            if (self.pos[i, 0] < 0):
+                self.pos[i, 0] = 0
+                # retourne horizontalement
+                self.angle[i] = np.pi - self.angle[i]
+                # on ralentis
+                self.actu_vitesse(1, i)
+            if (self.pos[i, 0] > width - rightMenuSize):
+                self.pos[i, 0] = width - rightMenuSize
+                # retourne horizontalement
+                self.angle[i] = np.pi - self.angle[i]
+                # on ralentis
+                self.actu_vitesse(1, i)
+
+            if (self.pos[i, 1] < 0):
+                self.pos[i, 1] = 0
+                # retourne horizontalement
+                self.angle[i] = (2*np.pi) - self.angle[i]
+                # on ralentis
+                self.actu_vitesse(1, i)
+            if (self.pos[i, 1] > height):
+                self.pos[i, 1] = height
+                # retourne horizontalement
+                self.angle[i] = (2*np.pi) - self.angle[i]
+                # on ralentis
+                self.actu_vitesse(1, i)
         return removed
 
     def actu_vitesse(self, vitesse, index):
@@ -126,9 +177,8 @@ def interactNeutronsWithUrXe(neutrons, grid):
             continue
 
         #Si c'est un neutron lent et que la case contient du combustible fissile
-        if grid[grid_x, grid_y] == UR_235 and not neutrons.v[i,1]: 
-            #fission_result = getRandomConvXe() #On jete les dés pour la fission
-            fission_result = 1 #On jete les dés pour la fission
+        if grid[grid_x, grid_y] == UR_235 and not neutrons.v[i,2]: 
+            fission_result = getRandomConvXe() #On jete les dés pour la fission
 
             if fission_result == 0:
                continue
@@ -145,18 +195,19 @@ def interactNeutronsWithUrXe(neutrons, grid):
 
             # On ajoute un conbustible autrepart
             res = np.argwhere(grid == NON_FISSIBLE) #On trouve les (i, j) pour les cases de réserve
-            rx, ry = res[random.randint(0, len(res)-1)] #On extrait aléatoirement les coordonnées d'une réserve dispo
-            grid[rx, ry] = UR_235 #On réinsère du combustible à cet emplacement
+            if (len(res) > 0):
+                rx, ry = res[random.randint(0, len(res)-1)] #On extrait aléatoirement les coordonnées d'une réserve dispo
+                grid[rx, ry] = UR_235 #On réinsère du combustible à cet emplacement
 
             #On émet 3 neutrons rapides avec des directions aléatoires
             for _ in range(3) : 
-                neutrons.addNeutron(neutrons.pos[i,0], neutrons.pos[i,1])
+                neutrons.addFastNeutron(neutrons.pos[i,0], neutrons.pos[i,1])
 
             # On retire le neutron absorbé
             neutrons.removeNeutron(i)
 
         #Si la case contient du Xénon et qu'on a un neutron lent
-        elif grid[grid_x, grid_y] == XE_135 and not neutrons.v[i,1]: 
+        elif grid[grid_x, grid_y] == XE_135 and not neutrons.v[i,2]: 
             Xe_abs_result = getRandomInteractLentXe() #On lance les dés pour l'absorption
 
             if Xe_abs_result == 0:
