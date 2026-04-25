@@ -43,7 +43,7 @@ violetXe = (121, 28, 248) #Indigo pour le Xénon
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
 border = 5 #Bordure inter-cellules
-delta_t = 0.01 #Écart temporel d'une itération à l'autre (en s)
+delta_t = 1/fps #Écart temporel d'une itération à l'autre (en s)
 
 # Variables physiques de la modélisation
 pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ici 1px = 0.05cm =5e-4m)
@@ -110,3 +110,7 @@ def cellTocoord(c, r, param): #c --> colonne (x) et r --> ligne (y)
         return c*cell_size+cell_size//2, r*cell_size+cell_size//2 #Conversion de cellule vers coordonnées
     else:
         return (int(c//cell_size), int(r//cell_size)) #Conversion des coordonnées vers cellule
+
+NON_FISSIBLE: int = 0
+UR_235: int = 1
+XE_135: int = 2

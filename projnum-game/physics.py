@@ -1,10 +1,73 @@
 from models import *
+from numpy._typing import NDArray
 import numpy as np
+from simpleRandom import *
+
+class Neutrons:
+    max_neutron: int = 10000
+    nb_neutron: int = 0
+
+    # Le premier index de pos est la position en x 
+    # et le second la position en y
+    pos: NDArray
+
+    # Le premier index de v est la vitesse en x, 
+    # le second la vitesse en y 
+    # et le troisième un booléen indiquant si le neutron est rapide ou lent
+    v: NDArray
+
+    # Un tableau d'angle pour chaque neutron
+    angle: NDArray
+
+    # Init des collections de neutrons
+    def __init__(self):
+        self.pos = np.zeros((self.max_neutron, 2))
+        self.v = np.zeros((self.max_neutron, 3))
+        self.angle = np.zeros(self.max_neutron)
+        self.nb_neutron = 0;
+
+    # Ajoute un neutron dans le tableau numpy
+    def addNeutron(self, x, y):
+        # Pour garder une taille fixe en mémoire
+        if (self.nb_neutron >= self.max_neutron):
+            return;
+
+        # On ajoute toujours à la position en cours (nbNeutron)
+        self.pos[self.nb_neutron] = [x, y]
+        self.angle[self.nb_neutron] = getRandomAngle()
+        vitesse = getRandomSpeed()  # Répartition des neutrons rapides et lents
+        self.actu_vitesse(vitesse, self.nb_neutron)
+        self.nb_neutron += 1
+
+    def removeNeutron(self, index):
+        if index < 0 or index >= self.nb_neutron:
+            return
+        self.pos[index] = self.pos[self.nb_neutron - 1]
+        self.v[index] = self.v[self.nb_neutron - 1]
+        self.angle[index] = self.angle[self.nb_neutron - 1]
+        self.nb_neutron -= 1
+
+    def deplacer(self):
+        removed = 0;
+        self.pos[:,:] += self.v[:, 0:2]
+        for i in range(self.nb_neutron):
+            if (
+                self.pos[i, 0] < 0 or self.pos[i, 0] > width - rightMenuSize 
+                or self.pos[i, 1] < 0 or self.pos[i, 1] > height
+            ):  # Si le neutron sort de l'écran on le supprime
+                self.removeNeutron(i)
+                removed = removed + 1
+        return removed
+
+    def actu_vitesse(self, vitesse, index):
+        vx = vitesse * np.cos(self.angle[index])
+        vy = vitesse * np.sin(self.angle[index])
+        self.v[index] = [vx, vy, vitesse == 3]
 
 def handleHeatTransfer(T):
-    # On calcule le transfert thermique dans chaque dirrection
-    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * 60400 * delta_t
-    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * 60400 * delta_t
+    # On calcule le transfert thermique dans chaque direction
+    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * 6040 * delta_t
+    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * 6040 * delta_t
     # On applique le transfert d'énergie en positif et en négatif pour le départ et l'arrivée
     diff = np.zeros_like(T)
     diff[1:, :] += energy_right
@@ -12,3 +75,96 @@ def handleHeatTransfer(T):
     diff[:, 1:] += energy_bottom
     diff[:, :-1] -= energy_bottom 
     T += diff / (m_eau * C_me)  # On met à jour
+
+def interactNeutronsWithWater(T, neutrons: Neutrons):
+    for i in range(neutrons.nb_neutron):
+        # Coordonnées du neutron cible dans la base des cases
+        grid_x = int(neutrons.pos[i, 0] // cell_size)
+        grid_y = int(neutrons.pos[i, 1] // cell_size)
+
+        if (
+            0 <= grid_x < cols and 0 <= grid_y < rows
+        ):  # On verifie que le neutron soit bien dans l'écran
+            if (
+                T[grid_x, grid_y] <= T_ev
+            ):  # Si la case contient de l'eau liquide
+
+                if neutrons.v[i, 2]:
+                    # On lance les dés pour l'intéraction rapide
+                    interact_rapide = getRandomInteractRapide()  
+                    if interact_rapide == 1:
+                        # Chaleur fournie par le neutron rapide
+                        T[grid_x, grid_y] += (
+                            q_ad_fast * (Ec_fast - Ec_slow) / (m_eau * C_me)
+                        )  
+                        # Ralentissement du neutron rapide
+                        neutrons.actu_vitesse(1, i)
+                else:
+                    # Idem pour l'absorption lente
+                    absorption_lent = getRandomInteractLent()  
+                    if absorption_lent == 1:
+                        # Chaleur fournie par le neutron lent (concrètement négligeable)
+                        T[grid_x, grid_y] += (
+                            q_ad_slow * Ec_slow / (m_eau * C_me)
+                        )  
+                        # Le neutron lent est quant à lui absorbé donc il disparait
+                        neutrons.removeNeutron(i)
+
+def interactNeutronsWithUrXe(neutrons, grid):
+    fission_count = 0
+    Xe_abs_count = 0
+
+    for i in range(neutrons.nb_neutron):
+        nx = neutrons.pos[i,0]
+        ny = neutrons.pos[i,1]
+
+        #Coordonnées du neutron cible dans la base des cases
+        grid_x, grid_y = int(nx//cell_size), int(ny//cell_size) 
+
+        #On verifie que le neutron soit bien dans l'écran
+        if 0 > grid_x or grid_x >= cols or 0 > grid_y or grid_y >= rows: 
+            continue
+
+        #Si c'est un neutron lent et que la case contient du combustible fissile
+        if grid[grid_x, grid_y] == UR_235 and not neutrons.v[i,1]: 
+            #fission_result = getRandomConvXe() #On jete les dés pour la fission
+            fission_result = 1 #On jete les dés pour la fission
+
+            if fission_result == 0:
+               continue
+
+            #Si la fission s'effectue
+            fission_count +=1 #On incrémente le compteur de fission
+            conv_Xe_result = getRandomConvXe()
+
+            if conv_Xe_result == 0 : #Si n'est pas converti en Xénon
+                grid[grid_x, grid_y] = NON_FISSIBLE
+
+            else : #Si est converti en Xénon
+                grid[grid_x, grid_y] = XE_135 
+
+            # On ajoute un conbustible autrepart
+            res = np.argwhere(grid == NON_FISSIBLE) #On trouve les (i, j) pour les cases de réserve
+            rx, ry = res[random.randint(0, len(res)-1)] #On extrait aléatoirement les coordonnées d'une réserve dispo
+            grid[rx, ry] = UR_235 #On réinsère du combustible à cet emplacement
+
+            #On émet 3 neutrons rapides avec des directions aléatoires
+            for _ in range(3) : 
+                neutrons.addNeutron(neutrons.pos[i,0], neutrons.pos[i,1])
+
+            # On retire le neutron absorbé
+            neutrons.removeNeutron(i)
+
+        #Si la case contient du Xénon et qu'on a un neutron lent
+        elif grid[grid_x, grid_y] == XE_135 and not neutrons.v[i,1]: 
+            Xe_abs_result = getRandomInteractLentXe() #On lance les dés pour l'absorption
+
+            if Xe_abs_result == 0:
+               continue
+            
+            #Si il y a absorption par le Xénon
+            Xe_abs_count +=1 #On incrémente le compteur associé
+            grid[grid_x, grid_y] = NON_FISSIBLE #La case devient une réserve
+            neutrons.removeNeutron(i)
+
+    return (fission_count, Xe_abs_count)

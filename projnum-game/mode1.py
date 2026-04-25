@@ -6,7 +6,6 @@ from models import *
 from physics import *
 from simpleRandom import *
 
-
 class RightMenu:
     font = pygame.font.Font("freesansbold.ttf", 12)
     temp_surface: pygame.Surface
@@ -86,77 +85,16 @@ class RightMenu:
         screen.blit(speed_val_surface, speed_val_rect)
 
     def computeMetrics(self, neutrons, grid, current_speed):
-        self.nbNeutron = len(neutrons)
+        self.nbNeutron = neutrons.nb_neutron
         self.temp = np.mean(grid[:, :, 0])
         self.vapQuantity = np.sum(grid[:, :, 0] >= T_ev)
         self.sim_speed_val = current_speed
 
-
-class Neutron:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.isFast = True
-        self.angle = getRandomAngle()
-        self.v = getRandomSpeed()  # Répartition des neutrons rapides et lents
-        self.taille = 3
-        self.actu_vitesse()
-
-    def actu_vitesse(self):
-        self.vx = self.v * np.cos(self.angle)
-        self.vy = self.v * np.sin(self.angle)
-        self.isFast = self.v == 3
-        self.color = violet if self.isFast else blanc
-
-    def deplacer(self):
-        self.x += self.vx
-        self.y += self.vy
-
-    def dessiner(self, surface):
-        pygame.draw.rect(surface, self.color, (int(self.x), int(self.y), self.taille, self.taille))
-
-
 class Mode1StateModel(ModeStateModel):
     rightMenu: RightMenu
     grid: NDArray
-    neutrons: NDArray
+    neutrons: Neutrons
     sim_speed: int
-
-    # ===== Helpers =====
-    def interactNeutronsWithWater(self):
-        for n in self.neutrons[:]:
-            grid_x, grid_y = int(n.x // cell_size), int(
-                n.y // cell_size
-            )  # Coordonnées du neutron cible dans la base des cases
-
-            if (
-                0 <= grid_x < cols and 0 <= grid_y < rows
-            ):  # On verifie que le neutron soit bien dans l'écran
-                if (
-                    self.grid[grid_x, grid_y, 0] <= T_ev
-                ):  # Si la case contient de l'eau liquide
-
-                    if n.isFast:
-                        # On lance les dés pour l'intéraction rapide
-                        interact_rapide = getRandomInteractRapide()  
-                        if interact_rapide == 1:
-                            self.grid[grid_x, grid_y, 0] += (
-                                q_ad_fast * (Ec_fast - Ec_slow) / (m_eau * C_me)
-                            )  # Chaleur fournie par le neutron rapide
-                            n.v = 1  # Ralentissement du neutron rapide
-                            n.actu_vitesse()
-                    elif not n.isFast:
-                        # Idem pour l'absorption lente
-                        absorption_lent = getRandomInteractLent()  
-                        if absorption_lent == 1:
-                            self.grid[grid_x, grid_y, 0] += (
-                                q_ad_slow * Ec_slow / (m_eau * C_me)
-                            )  # Chaleur fournie par le neutron lent (concrètement négligeable)
-                            if n in self.neutrons:
-                                self.neutrons.remove(
-                                    n
-                                )  # Le neutron lent est quant à lui absorbé donc il disparait
-                                continue
 
     # ====== Main functions ======
 
@@ -168,8 +106,8 @@ class Mode1StateModel(ModeStateModel):
             (cols, rows, 2)
         )  # Initialisation de la grille, chaque case contient un vecteur (température, temps)
         self.grid[:, :, 0] = T0  # Remplissage des températures
-        self.neutrons = []
-        self.sim_speed = 30
+        self.sim_speed = 1
+        self.neutrons = Neutrons() #Initialisation de la collection de neutrons
 
     def update(self, events, setMode):
         for event in events:
@@ -183,22 +121,14 @@ class Mode1StateModel(ModeStateModel):
         if pygame.mouse.get_pressed()[0]:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             for _ in range(self.sim_speed):
-                self.neutrons.append(
-                    Neutron(mouse_x, mouse_y)
-                )  # On ajoute les neutrons en dessous du curseur
+                # On ajoute les neutrons en dessous du curseur
+                self.neutrons.addNeutron(mouse_x, mouse_y)  
 
         # Déplacement des neutrons
-        for n in self.neutrons[:]:
-            n.deplacer()
-
-            if (
-                n.x < 0 or n.x > width - rightMenuSize or n.y < 0 or n.y > height
-            ):  # Si le neutron sort de l'écran on le supprime
-                self.neutrons.remove(n)
-                continue
+        self.neutrons.deplacer()
 
         # Intéraction des neutrons avec les cases d'eau
-        self.interactNeutronsWithWater()
+        interactNeutronsWithWater(self.grid[:, :, 0], self.neutrons)
 
         # Transfert de chaleur entre les cases d'eau
         handleHeatTransfer(self.grid[:, :, 0])
@@ -235,8 +165,14 @@ class Mode1StateModel(ModeStateModel):
                 )
 
         # affichage des neutrons
-        for n in self.neutrons[:]:
-            n.dessiner(screen)
+        for i in range(self.neutrons.nb_neutron):
+            color = violet if self.neutrons.v[i, 2] else blanc
+            pygame.draw.rect(screen, 
+                             color, 
+                             (int(self.neutrons.pos[i, 0]), 
+                              int(self.neutrons.pos[i, 1]), 
+                              3, 
+                              3))
     
     def export_datas(self):
         pass
