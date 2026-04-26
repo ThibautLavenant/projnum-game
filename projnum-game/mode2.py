@@ -6,56 +6,135 @@ from models import *
 from physics import *
 
 class RightMenu:
-    font = pygame.font.Font('freesansbold.ttf', 12);
-    temp_surface: pygame.Surface;
-    nbNeutron_surface: pygame.Surface;
-    vapQuantity_surface: pygame.Surface;
-    temp_rect: pygame.Rect;
-    nbNeutron_rect: pygame.Rect;
-    vapQuantity_rect: pygame.Rect;
-    speed_surface: pygame.Surface
-    speed_rect: pygame.Rect
-    sim_speed_val: int = 1
+    font = pygame.font.Font('freesansbold.ttf', 10)
+    text_surface_list: list[pygame.Surface]
+    text_rect_list: list[pygame.Rect]
 
-    temp: float;
-    nbNeutron: int;
-    vapQuantity: int;
+    sim_speed_val: int = 1
+    temp: float
+    nbNeutron: int
+    nbNeutronTotal: int
+    vapQuantity: int
     
     spacing = 15; #pix
     start = 10; #pix
+    startX = 605; #pix
 
     def prepare_menu(self):
-        posY = self.start; #pix
-        self.temp_surface = self.font.render("Température moyenne :", True, (255, 255, 255))
-        self.temp_rect = self.temp_surface.get_rect(topleft=(610, posY))
-        posY += self.spacing
-        self.nbNeutron_surface = self.font.render("Nombre de neutrons :", True, (255, 255, 255))
-        self.nbNeutron_rect = self.nbNeutron_surface.get_rect(topleft=(610, posY))
-        posY += self.spacing
-        self.vapQuantity_surface = self.font.render("Quantité de vapeur :", True, (255, 255, 255))
-        self.vapQuantity_rect = self.vapQuantity_surface.get_rect(topleft=(610, posY))
-        posY += self.spacing
-        self.speed_surface = self.font.render("Vitesse simulation :", True, (255, 255, 255))
-        self.speed_rect = self.speed_surface.get_rect(topleft=(610, posY))
+        posX = self.startX
+        posY = self.start
+        
+        indicatorsList = ["Température moyenne :"
+                            , "Nombre de neutrons :"
+                            , "Quantité de vapeur :"
+                            , "Vitesse simulation :"
+                            , "Énergie produite :"
+                            , "Neutrons total :"
+        ] 
+        
+        self.text_surface_list = []
+        self.text_rect_list = []
+        for indicator in indicatorsList:
+            self.text_surface_list.append(self.font.render(
+                indicator, True, (255, 255, 255)
+            ))
+            temp_rect = self.text_surface_list[-1].get_rect(topleft=(posX, posY))
+            self.text_rect_list.append(temp_rect)
+            posY += self.spacing
+            
+        posY += 100
+        messageList = ["Dans ce Mode de jeu, le but est de"
+                     , "produire de l'énergie en chauffant"
+                     , "l'eau par les neutrons."
+                     , "Cette fois-ci, les bulles de vapeur"
+                     , "remontent à la surface et l'eau est"
+                     , "refroidie en permanence."
+                     , "Le but est d'ateindre 25kWh avec"
+                     , "le moins de neutrons possibles."
+                     , "Atention, les neutrons qui s'échapent"
+                     , "ne contribuent pas à la production"
+                     , "d'énergie"
+        ]
+        for message in messageList:
+            self.text_surface_list.append(self.font.render(
+                message, True, (255, 255, 255)
+            ))
+            temp_rect = self.text_surface_list[-1].get_rect(topleft=(posX, posY))
+            self.text_rect_list.append(temp_rect)
+            posY += self.spacing
 
-        posY += self.spacing
-        self.enprod_surface = self.font.render("Énergie produite :", True, (255, 255, 255))
-        self.enprod_rect = self.enprod_surface.get_rect(topleft=(610, posY))       
+        posY += 20
+        messageList = [ "Controles"
+            , "Clic gauche : Faire apparaitre un neutron"
+            , "Flèche haut : Accélérer la simulation"
+            , "Flèche bas : Ralentir la simulation"
+            , "Echap : Revenir au menu"
+        ]
+        for message in messageList:
+            self.text_surface_list.append(self.font.render(
+                message, True, (255, 255, 255)
+            ))
+            temp_rect = self.text_surface_list[-1].get_rect(topleft=(posX, posY))
+            self.text_rect_list.append(temp_rect)
+            posY += self.spacing
 
-        self.temp = 0;
-        self.nbNeutron = 0;
-        self.vapQuantity = 0;
+        posY += 20
+        self.text_surface_list.append(self.font.render(
+            "Légende", True, (255, 255, 255)
+        ))
+        temp_rect = self.text_surface_list[-1].get_rect(topleft=(posX, posY))
+        self.text_rect_list.append(temp_rect)
+        posY += self.spacing
+
+        posX += 20
+        self.legendStart = posY
+        messageList = [ "Neutron lent"
+            , "Neutron rapide"
+            , "Case d'eau"
+        ]
+        for message in messageList:
+            self.text_surface_list.append(self.font.render(
+                message, True, (255, 255, 255)
+            ))
+            temp_rect = self.text_surface_list[-1].get_rect(topleft=(posX, posY))
+            self.text_rect_list.append(temp_rect)
+            posY += self.spacing
+
+        self.font.render(
+                message, True, (255, 255, 255)
+            )
+
+        self.temp = 0
+        self.nbNeutron = 0
+        self.vapQuantity = 0
         self.sim_speed_val = 1
         self.enprod = 0
 
     def display_menu(self, screen):
-        screen.blit(self.temp_surface, self.temp_rect)
-        screen.blit(self.nbNeutron_surface, self.nbNeutron_rect)
-        screen.blit(self.vapQuantity_surface, self.vapQuantity_rect)
-        screen.blit(self.speed_surface, self.speed_rect)
-        screen.blit(self.enprod_surface, self.enprod_rect)
+        for i in range(len(self.text_surface_list)):
+            screen.blit(self.text_surface_list[i], self.text_rect_list[i])
         
-        posY = self.start; #pix
+        posY = self.legendStart
+        pygame.draw.rect(screen, 
+                         blanc, 
+                         (self.startX, posY, 3, 3))
+        posY += self.spacing
+        pygame.draw.rect(screen, 
+                         violet, 
+                         (self.startX, posY, 3, 3))
+        posY += self.spacing
+        pygame.draw.rect(
+            screen,
+            bleu,
+            (
+                self.startX,
+                posY,
+                cell_size - border,
+                cell_size - border,
+            ),
+        )
+
+        posY = self.start #pix
         temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
         temp_rect = temp_surface.get_rect(topright=(790, posY))
         screen.blit(temp_surface, temp_rect)
@@ -75,9 +154,14 @@ class RightMenu:
         enprod_surface = self.font.render(f"{self.enprod*JTokWh:.1f} kWh", True, (255, 255, 255))
         enprod_rect = enprod_surface.get_rect(topright=(790, posY))
         screen.blit(enprod_surface, enprod_rect)
+        posY += self.spacing; #pix
+        enprod_surface = self.font.render(f"{self.nbNeutronTotal}", True, (255, 255, 255))
+        enprod_rect = enprod_surface.get_rect(topright=(790, posY))
+        screen.blit(enprod_surface, enprod_rect)
 
-    def computeMetrics(self, neutrons, grid, current_speed, enprod):
+    def computeMetrics(self, neutrons : Neutrons, grid, current_speed, enprod):
         self.nbNeutron = neutrons.nb_neutron
+        self.nbNeutronTotal = neutrons.total_neutrons
         self.temp = np.mean(grid[:, :, 0])
         self.vapQuantity = np.sum(grid[:, :, 0] >= T_ev)
         self.sim_speed_val = current_speed
@@ -193,8 +277,6 @@ class Mode2StateModel(ModeStateModel):
                     self.neutrons.addNeutron(mouse_x, mouse_y)
                     self.emitted_neutrons_count += 1
                     self.neutron_acc -= 1 #On en retire un pour pas le re créer
-                    self.angle_idx = (self.angle_idx + 1)%self.rdt_size
-                    self.vit_idx = (self.vit_idx + 1)%self.rdt_size
 
             # Déplacement des neutrons
             self.notInteract_count += self.neutrons.deplacer()

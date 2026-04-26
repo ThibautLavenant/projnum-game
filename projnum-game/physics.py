@@ -6,6 +6,7 @@ from simpleRandom import *
 class Neutrons:
     max_neutron: int = 10000
     nb_neutron: int = 0
+    total_neutrons: int = 0
 
     # Le premier index de pos est la position en x 
     # et le second la position en y
@@ -42,6 +43,7 @@ class Neutrons:
         self.angle[self.nb_neutron] = getRandomAngle()
         self.actu_vitesse(vitesse, self.nb_neutron)
         self.nb_neutron += 1
+        self.total_neutrons += 1
 
     def addSlowNeutron(self, x, y):
         self.addNeutronWithSpeed(x, y, 1)

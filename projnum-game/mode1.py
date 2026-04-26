@@ -12,18 +12,16 @@ class RightMenu:
     text_rect_list: list[pygame.Rect]
 
     sim_speed_val: int = 1
-
     temp: float
     nbNeutron: int
     vapQuantity: int
-
-    spacing = 15
-    # pix
-    start = 10
-    # pix
+    
+    spacing = 15; #pix
+    start = 10; #pix
+    startX = 605; #pix
 
     def prepare_menu(self):
-        posX = 605
+        posX = self.startX
         posY = self.start
         indicatorsList = ["Température moyenne :"
                             , "Nombre de neutrons :"
@@ -70,6 +68,7 @@ class RightMenu:
             , "Clic gauche : Faire apparaitre un neutron"
             , "Flèche haut : Accélérer la simulation"
             , "Flèche bas : Ralentir la simulation"
+            , "Echap : Revenir au menu"
         ]
         for message in messageList:
             self.text_surface_list.append(self.font.render(
@@ -79,6 +78,7 @@ class RightMenu:
             self.text_rect_list.append(temp_rect)
             posY += self.spacing
 
+        posY += 20
         self.text_surface_list.append(self.font.render(
             "Légende", True, (255, 255, 255)
         ))
@@ -87,7 +87,6 @@ class RightMenu:
         posY += self.spacing
 
         posX += 20
-        posY += 20
         self.legendStart = posY
         messageList = [ "Neutron lent"
             , "Neutron rapide"
@@ -117,25 +116,24 @@ class RightMenu:
         posY = self.legendStart
         pygame.draw.rect(screen, 
                          blanc, 
-                         (605, posY, 3, 3))
+                         (self.startX, posY, 3, 3))
         posY += self.spacing
         pygame.draw.rect(screen, 
                          violet, 
-                         (605, posY, 3, 3))
+                         (self.startX, posY, 3, 3))
         posY += self.spacing
         pygame.draw.rect(
             screen,
             bleu,
             (
-                605,
+                self.startX,
                 posY,
                 cell_size - border,
                 cell_size - border,
             ),
         )
 
-        posY = self.start
-        # pix
+        posY = self.start # pix
         temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
         temp_rect = temp_surface.get_rect(topright=(790, posY))
         screen.blit(temp_surface, temp_rect)
