@@ -12,6 +12,7 @@ class RightMenu:
     text_rect_list: list[pygame.Rect]
 
     sim_speed_val: int = 1
+    k_val: float
     temp: float;
     nbNeutron: int;
     nbNeutronTotal: int
@@ -33,6 +34,7 @@ class RightMenu:
                             #, "Énergie produite :"
                             , "Neutrons total :"
                             , "Concentration combustible :"
+                            , "Facteur k :"
         ]
         
         self.text_surface_list = []
@@ -165,14 +167,19 @@ class RightMenu:
         C_comb_surface = self.font.render(f"{self.C_comb}", True, (255, 255, 255))
         C_comb_rect = C_comb_surface.get_rect(topright=(790, posY))
         screen.blit(C_comb_surface, C_comb_rect)
+        posY += self.spacing
+        k_val_surface = self.font.render(f"{self.k_val:.2f}", True, (255, 255, 255))
+        k_val_rect = k_val_surface.get_rect(topright=(790, posY))
+        screen.blit(k_val_surface, k_val_rect)
 
-    def computeMetrics(self, neutrons, grid, current_speed):
+    def computeMetrics(self, neutrons, grid, current_speed, k):
         self.nbNeutron = neutrons.nb_neutron
         self.nbNeutronTotal = neutrons.total_neutrons
         # self.temp = np.mean(grid[:, :, 0])
         # self.vapQuantity = np.sum(grid[:, :, 0] >= T_ev)
         self.sim_speed_val = current_speed
         # self.enprod = enprod
+        self.k_val = k
 
 class Mode3StateModel(ModeStateModel):
     rightMenu: RightMenu
@@ -195,12 +202,15 @@ class Mode3StateModel(ModeStateModel):
                 self.Xe_abs_count, #Nombre d'intéractions avec du Xénon (AD)
                 (self.fission_count + self.Xe_abs_count), #Nombre total d'intéractions (AD)
                 self.notInteract_count, #Nombre total de neutrons n'ayant pas intéragit (AD)
+                self.E_prod_fission*JToMeV, #Énergie libérée convertie (en MeV)
+                self.fact_k, #Facteur de multiplication k (AD)
+                100*np.count_nonzero(self.grid == UR_235)/self.grid.size #Concentration réelle du combustible en %
             ])
 
     def export_datas(self):
         if self.data_list: #On regarde si la liste n'est pas vide
             final_array = np.array(self.data_list)
-            header = "Temps(s), NeutInside(AD), NeutTherm(AD), IntFission(AD), IntXenon(AD), IntTot(AD), TotNonInt(AD)"
+            header = "Temps(s), NeutInside(AD), NeutTherm(AD), IntFission(AD), IntXenon(AD), IntTot(AD), TotNonInt(AD), EFiss(MeV), Fact_k(AD), Ccomb(%)"
             np.savetxt("Datas/sim_data_mode3.txt", final_array, delimiter = ",", header=header, comments='')
 
     # ====== Main functions ======
@@ -233,6 +243,10 @@ class Mode3StateModel(ModeStateModel):
         self.nb_thermiques = 0 #Initilisation du compteur de neutrons thermiques (lents)
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
         self.Xe_abs_count = 0 #Initialisation du compteur de neutrons absorbés par le Xénon
+        self.fact_k = 0 #Initilisation du facteur k
+        self.disap_count_k = 0 #Initilisation du compteur de neutrons disparus pour k
+        self.fission_count_k = 0 #Initilisation du compteur de fissions pour k
+        self.E_prod_fission = 0 #Initilisation de l'énergie produite par fission
 
     def update(self, events, setMode):
         for event in events:
@@ -292,6 +306,9 @@ class Mode3StateModel(ModeStateModel):
         for _ in range(self.sim_speed):
             self.sim_time += delta_t #On incrémente le compteur de temps
 
+            removed_neut = self.neutrons.deplacerWithConfinment()
+            self.notInteract_count += removed_neut
+
             # Déplacement des neutrons
             self.notInteract_count += self.neutrons.deplacerWithConfinment() 
 
@@ -300,10 +317,20 @@ class Mode3StateModel(ModeStateModel):
             self.fission_count += fission_count
             self.Xe_abs_count += Xe_abs_count
 
+            self.disap_count_k += removed_neut + fission_count + Xe_abs_count
+            self.fission_count_k += fission_count
+
+            if self.disap_count_k >= n_k:
+                self.fact_k = (self.fission_count_k*neut_gen_fission)/self.disap_count_k
+                self.fission_count_k = 0
+                self.disap_count_k = 0
+
+            self.E_prod_fission += fission_count*E_lib_fission
+
         #Enregistrement des données
         self.save_data()
 
-        self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed)
+        self.rightMenu.computeMetrics(self.neutrons, self.grid, self.sim_speed, self.fact_k)
         self.rightMenu.C_comb = self.C_comb
 
     def paint(self, screen):
