@@ -19,6 +19,7 @@ class RightMenu:
     vapQuantity: int;
     enprod: float;
     C_comb: int;
+    k_val: float
     
     spacing = 15; #pix
     start = 10; #pix
@@ -29,6 +30,7 @@ class RightMenu:
         posY = self.start
         indicatorsList = ["Température moyenne :"
                             , "Nombre de neutrons :"
+                            , "Facteur k :"
                             , "Quantité de vapeur :"
                             , "Vitesse simulation :"
                             , "Énergie produite :"
@@ -174,6 +176,10 @@ class RightMenu:
         nbNeutron_rect = nbNeutron_surface.get_rect(topright=(790, posY))
         screen.blit(nbNeutron_surface, nbNeutron_rect)
         posY += self.spacing
+        k_val_surface = self.font.render(f"{self.k_val:.2f}", True, (255, 255, 255))
+        k_val_rect = k_val_surface.get_rect(topright=(790, posY))
+        screen.blit(k_val_surface, k_val_rect)
+        posY += self.spacing
         vapQuantity_surface = self.font.render(f"{self.vapQuantity}", True, (255, 255, 255))
         vapQuantity_rect = vapQuantity_surface.get_rect(topright=(790, posY))
         screen.blit(vapQuantity_surface, vapQuantity_rect)
@@ -194,13 +200,14 @@ class RightMenu:
         C_comb_rect = C_comb_surface.get_rect(topright=(790, posY))
         screen.blit(C_comb_surface, C_comb_rect)
 
-    def computeMetrics(self, neutrons, grid, current_speed, enprod):
+    def computeMetrics(self, neutrons, grid, current_speed, enprod, k):
         self.nbNeutron = neutrons.nb_neutron
         self.nbNeutronTotal = neutrons.total_neutrons
         self.temp = np.mean(grid[:, :, 0])
         self.vapQuantity = np.sum(grid[:, :, 0] >= T_ev)
         self.sim_speed_val = current_speed
         self.enprod = enprod
+        self.k_val = k
 
 class Mode5StateModel(ModeStateModel):
     rightMenu: RightMenu
@@ -297,7 +304,12 @@ class Mode5StateModel(ModeStateModel):
         self.nb_thermiques = 0 #Initilisation du compteur de neutrons thermiques (lents)
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
         self.Xe_abs_count = 0 #Initialisation du compteur de neutrons absorbés par le Xénon
-        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur 
+        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur
+
+        self.fact_k = 0 #Initilisation du facteur k
+        self.disap_count_k = 0 #Initilisation du compteur de neutrons disparus pour k
+        self.fission_count_k = 0 #Initilisation du compteur de fissions pour k
+        self.E_prod_fission = 0 #Initilisation de l'énergie produite par fission
         
     def update(self, events, setMode):
         for event in events:
@@ -356,9 +368,9 @@ class Mode5StateModel(ModeStateModel):
         self.nb_thermiques = sum(1 for n in self.neutrons.v[:,2] if n == True)
         for _ in range(self.sim_speed):
             self.sim_time += delta_t #On incrémente le compteur de temps
-
-            # Déplacement des neutrons
-            self.notInteract_count += self.neutrons.deplacerWithConfinment() 
+    
+            removed_neut = self.neutrons.deplacerWithConfinment()
+            self.notInteract_count += removed_neut
             
             # Intéraction des neutrons avec les cases d'eau
             interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
@@ -374,10 +386,20 @@ class Mode5StateModel(ModeStateModel):
             self.fission_count += fission_count
             self.Xe_abs_count += Xe_abs_count
 
+            self.disap_count_k += removed_neut + fission_count + Xe_abs_count
+            self.fission_count_k += fission_count
+
+            if self.disap_count_k >= n_k:
+                self.fact_k = (self.fission_count_k*neut_gen_fission)/self.disap_count_k
+                self.fission_count_k = 0
+                self.disap_count_k = 0
+
+            self.E_prod_fission += fission_count*E_lib_fission
+
         #Enregistrement des données
         self.save_data()
 
-        self.rightMenu.computeMetrics(self.neutrons, self.water_grid, self.sim_speed, self.E_utile)
+        self.rightMenu.computeMetrics(self.neutrons, self.water_grid, self.sim_speed, self.E_utile, self.fact_k)
         self.rightMenu.C_comb = self.C_comb
 
     def paint(self, screen):

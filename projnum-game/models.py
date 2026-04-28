@@ -23,7 +23,7 @@ class ModeStateModel(ABC):
         pass
 
 # Pygame variables for window handling
-width, height = 800, 600
+width, height = 800, 700
 rightMenuSize = 200
 fps = 60
 

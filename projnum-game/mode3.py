@@ -140,10 +140,9 @@ class RightMenu:
         pygame.draw.circle(screen,grisVi,(self.startX, posY), int(0.8*cell_size//2))
         
         posY = self.start #pix
-        temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
-        temp_rect = temp_surface.get_rect(topright=(790, posY))
-        screen.blit(temp_surface, temp_rect)
-        posY += self.spacing
+        #temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
+        #temp_rect = temp_surface.get_rect(topright=(790, posY))
+        #screen.blit(temp_surface, temp_rect)
         nbNeutron_surface = self.font.render(f"{self.nbNeutron:.0f}", True, (255, 255, 255))
         nbNeutron_rect = nbNeutron_surface.get_rect(topright=(790, posY))
         screen.blit(nbNeutron_surface, nbNeutron_rect)
@@ -308,9 +307,6 @@ class Mode3StateModel(ModeStateModel):
 
             removed_neut = self.neutrons.deplacerWithConfinment()
             self.notInteract_count += removed_neut
-
-            # Déplacement des neutrons
-            self.notInteract_count += self.neutrons.deplacerWithConfinment() 
 
             #Intéractions avec les neutrons           
             (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid)

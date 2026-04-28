@@ -83,6 +83,7 @@ class Neutrons:
             ):  # Si le neutron sort de l'écran on le supprime
                 self.removeNeutron(i)
                 removed = removed + 1
+                continue
 
             # Si neutron rapide, est renvoyé et ralenti
             if (self.pos[i, 0] < 0):
@@ -180,7 +181,7 @@ def interactNeutronsWithUrXe(neutrons, grid):
 
         #Si c'est un neutron lent et que la case contient du combustible fissile
         if grid[grid_x, grid_y] == UR_235 and not neutrons.v[i,2]: 
-            fission_result = getRandomConvXe() #On jete les dés pour la fission
+            fission_result = getRandomInteractLentFission() #On jete les dés pour la fission
 
             if fission_result == 0:
                continue
