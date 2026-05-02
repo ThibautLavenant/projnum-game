@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>088107e0-3111-45ec-9890-04554a8facea</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>mainpage.py</StartupFile>
+    <StartupFile>verifNeutrons2.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +23,10 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="verifNeutrons2.py" />
+    <Compile Include="verifNeutrons.py" />
+    <Compile Include="verifTemperature2.py" />
+    <Compile Include="verifTemperature.py" />
     <Compile Include="mainpage.py" />
     <Compile Include="mainMenu.py" />
     <Compile Include="mode5.py" />
