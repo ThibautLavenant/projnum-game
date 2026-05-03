@@ -140,9 +140,10 @@ class RightMenu:
         pygame.draw.circle(screen,grisVi,(self.startX, posY), int(0.8*cell_size//2))
         
         posY = self.start #pix
-        #temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
-        #temp_rect = temp_surface.get_rect(topright=(790, posY))
-        #screen.blit(temp_surface, temp_rect)
+        # temp_surface = self.font.render(f"{self.temp:.0f} °K", True, (255, 255, 255))
+        # temp_rect = temp_surface.get_rect(topright=(790, posY))
+        # screen.blit(temp_surface, temp_rect)
+        # posY += self.spacing
         nbNeutron_surface = self.font.render(f"{self.nbNeutron:.0f}", True, (255, 255, 255))
         nbNeutron_rect = nbNeutron_surface.get_rect(topright=(790, posY))
         screen.blit(nbNeutron_surface, nbNeutron_rect)
