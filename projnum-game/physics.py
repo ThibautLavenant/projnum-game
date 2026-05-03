@@ -131,6 +131,7 @@ def handleHeatTransfer(T):
     T += diff / (m_eau * C_me)  # On met à jour
 
 def interactNeutronsWithWater(T, neutrons: Neutrons):
+    water_abs_count = 0
     for i in range(neutrons.nb_neutron):
         # Coordonnées du neutron cible dans la base des cases
         grid_x = int(neutrons.pos[i, 0] // cell_size)
@@ -163,8 +164,10 @@ def interactNeutronsWithWater(T, neutrons: Neutrons):
                         )  
                         # Le neutron lent est quant à lui absorbé donc il disparait
                         neutrons.removeNeutron(i)
+                        water_abs_count += 1
+    return water_abs_count
 
-def interactNeutronsWithUrXe(neutrons, grid):
+def interactNeutronsWithUrXe(neutrons, grid, T=None):
     fission_count = 0
     Xe_abs_count = 0
 
@@ -188,6 +191,10 @@ def interactNeutronsWithUrXe(neutrons, grid):
 
             #Si la fission s'effectue
             fission_count +=1 #On incrémente le compteur de fission
+
+            if T is not None :
+                T[grid_x, grid_y] += (fission_ctrl_factor*q_ad_fast*(frac_Elib_fiss*E_lib_fission)/(m_eau*C_me))
+
             conv_Xe_result = getRandomConvXe()
 
             if conv_Xe_result == 0 : #Si n'est pas converti en Xénon

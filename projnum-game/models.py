@@ -94,13 +94,15 @@ k1 = 2.4e-3*Gamma #Constante pour la loi de Newton - conducto convectif à l'int
 k2 = 2.4e-5*Gamma #Constante pour la loi de Fourier - conduction au sein du bassin
 
 # Pompage
-alpha_p = 50 #Pourcentage de puissance de la pompe
+alpha_p = 100 #Pourcentage de puissance de la pompe
 dT_max_p = 0.1 #Nbr de Kelvin retirés chaque seconde dans le cas où alpha = 100
 T_min_p = 50+CToK #Température minimale de refroidissement par pompage
 eta_p = 0.33 #Rendement typique d'un réacteur à eau pressurisée
 dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
 
 # Fission
+fission_ctrl_factor = 0.2 #Facteur de ralentissement pour la thermo du mode 5 (0.2 --> -80%)
+frac_Elib_fiss = 0.8 #Fraction d'énergie libérée par la fission elle même via les fragments
 neut_gen_fission = 3 #Nombre de neutrons générés par une fission
 E_lib_fission = 1.95e-11 #Énergie libérée lors de la fission de l'uranium 235
 n_k = 100 #Nombre de neutrons évalués pour déterminer k

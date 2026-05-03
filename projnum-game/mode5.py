@@ -242,6 +242,7 @@ class Mode5StateModel(ModeStateModel):
                         self.water_grid[i, j, 1] = 0
     
     def handleHeatTransfer(self):
+
         handleHeatTransfer(self.water_grid[:, :, 0]) #On gère le transfert de chaleur dans la grille
 
         mask = (self.water_grid[:, :, 0] - dT_p) > T_min_p #On vérifie la condition, on stocke dans un masque bool
@@ -373,7 +374,7 @@ class Mode5StateModel(ModeStateModel):
             self.notInteract_count += removed_neut
             
             # Intéraction des neutrons avec les cases d'eau
-            interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
+            water_abs_count = interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
 
             # Transfert de chaleur entre les cases d'eau
             self.handleHeatTransfer()
@@ -382,11 +383,12 @@ class Mode5StateModel(ModeStateModel):
             self.raiseGasBubble()
 
             #Intéractions avec les neutrons           
-            (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid)
+            (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid, self.water_grid[:, :, 0])
             self.fission_count += fission_count
             self.Xe_abs_count += Xe_abs_count
 
-            self.disap_count_k += removed_neut + fission_count + Xe_abs_count
+            #Facteur k
+            self.disap_count_k += removed_neut + fission_count + Xe_abs_count + water_abs_count
             self.fission_count_k += fission_count
 
             if self.disap_count_k >= n_k:
