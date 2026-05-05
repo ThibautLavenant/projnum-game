@@ -2,6 +2,7 @@ from models import *
 from numpy._typing import NDArray
 import numpy as np
 from simpleRandom import *
+import pygame
 
 class Neutrons:
     max_neutron: int = 10000
@@ -229,3 +230,17 @@ def interactNeutronsWithUrXe(neutrons, grid, T=None):
             neutrons.removeNeutron(i)
 
     return (fission_count, Xe_abs_count)
+
+def interactNeutronsWithControlRod(neutrons: Neutrons, rod_rect: pygame.Rect):
+    removed = 0
+    for i in range(neutrons.nb_neutron):
+        if not neutrons.v[i, 2]:
+            nx = neutrons.pos[i, 0]
+            ny = neutrons.pos[i, 1]
+        
+            # Si le centre du neutron est dans le rectangle de la barre
+            if rod_rect.collidepoint(nx, ny):
+                neutrons.removeNeutron(i)
+                removed += 1
+            
+    return removed

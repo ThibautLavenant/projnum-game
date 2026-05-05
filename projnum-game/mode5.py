@@ -71,11 +71,11 @@ class RightMenu:
 
         posY += 20
         messageList = [ "Controles"
-            , "Clic gauche : Faire apparaitre un neutron"
-            , "Flèche haut : Accélérer la simulation"
-            , "Flèche bas : Ralentir la simulation"
-            , "Flèche gauche : Réduire la concentration"
-            , "Flèche droite : Augmenter la concentration"
+            , "A/Q, Z/S, E/D : Bouger les barres"
+            , "Flèche haut : Accélérer la simu"
+            , "Flèche bas : Ralentir la simu"
+            , "Flèche gauche : Réduire comb."
+            , "Flèche droite : Augmenter comb."
             , "Entrer : Lancer la réaction"
             , "Echap : Revenir au menu"
         ]
@@ -104,6 +104,7 @@ class RightMenu:
             , "Cellule de vapeur"
             , "Uranium-235"
             , "Xénon-135"
+            , "Barre de contrôle"
             , "Autres éléments non fissibles"
         ]
         for message in messageList:
@@ -164,6 +165,8 @@ class RightMenu:
         pygame.draw.circle(screen,vertUr,(self.startX, posY), int(0.8*cell_size//2))
         posY += self.spacing
         pygame.draw.circle(screen,violetXe,(self.startX, posY), int(0.8*cell_size//2))
+        posY += self.spacing
+        pygame.draw.rect(screen, grisFonce, (self.startX, posY, cell_size - border, cell_size - border))
         posY += self.spacing
         pygame.draw.circle(screen,grisVi,(self.startX, posY), int(0.8*cell_size//2))
         
@@ -312,6 +315,16 @@ class Mode5StateModel(ModeStateModel):
         self.fission_count_k = 0 #Initilisation du compteur de fissions pour k
         self.E_prod_fission = 0 #Initilisation de l'énergie produite par fission
         
+        self.rod_w = cell_size - border
+        self.rod_h = height
+        self.rod_y = [-height//2, -height//2, -height//2]
+        
+        self.rod_x_positions = [
+            (cols // 4) * cell_size,
+            (cols // 2) * cell_size,
+            (3 * cols // 4) * cell_size
+        ]
+        
     def update(self, events, setMode):
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -365,6 +378,22 @@ class Mode5StateModel(ModeStateModel):
                             rx, ry = res[random.randint(0, len(res)-1)]
                             self.grid[rx, ry] = UR_235
 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            self.rod_y[0] = max(-self.rod_h, self.rod_y[0] - v_rod)
+        if keys[pygame.K_q]:
+            self.rod_y[0] = min(0, self.rod_y[0] + v_rod)
+            
+        if keys[pygame.K_z]:
+            self.rod_y[1] = max(-self.rod_h, self.rod_y[1] - v_rod)
+        if keys[pygame.K_s]:
+            self.rod_y[1] = min(0, self.rod_y[1] + v_rod)
+            
+        if keys[pygame.K_e]:
+            self.rod_y[2] = max(-self.rod_h, self.rod_y[2] - v_rod)
+        if keys[pygame.K_d]:
+            self.rod_y[2] = min(0, self.rod_y[2] + v_rod)
+
         self.neutrons_count = self.neutrons.nb_neutron
         self.nb_thermiques = sum(1 for n in self.neutrons.v[:,2] if n == True)
         for _ in range(self.sim_speed):
@@ -381,6 +410,10 @@ class Mode5StateModel(ModeStateModel):
 
             # Remontée des bulles de vapeur
             self.raiseGasBubble()
+
+            for idx, rx in enumerate(self.rod_x_positions):
+                rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+                interactNeutronsWithControlRod(self.neutrons, rod_rect)
 
             #Intéractions avec les neutrons           
             (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid, self.water_grid[:, :, 0])
@@ -453,6 +486,10 @@ class Mode5StateModel(ModeStateModel):
                     ),
                     int(cell_size//4)
                 )
+
+        for idx, rx in enumerate(self.rod_x_positions):
+            rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+            pygame.draw.rect(screen, grisFonce, rod_rect)
 
         # affichage des neutrons
         for i in range(self.neutrons.nb_neutron):

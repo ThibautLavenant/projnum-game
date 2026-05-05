@@ -39,6 +39,7 @@ rouge = (255, 50, 50)
 vertUr = (52, 201, 36) #Vert pomme pour l'Uranium
 grisVi = (158, 158, 158) #Gris souris pour le vide
 violetXe = (121, 28, 248) #Indigo pour le Xénon
+grisFonce = (60, 60, 60) #Gris foncé pour la barre de contrôle
 
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size
@@ -50,7 +51,7 @@ pxTom = 10e-2/20 #Facteur de conversion en m/px (permet de passer de px à m, ic
 CToK = 273.15 #Conversion Celsius-Kelvin
 JTokWh = 2.77778e-7 #Pour convertir des Joules en kWh
 JToMeV = 6.242e12 #Pour convertir des Joules en MeV
-Gamma = 50 #Facteur d'échelle pour les échanges thermiques, ici on prend 1s de simu = 50s réelles
+Gamma = 20 #Facteur d'échelle pour les échanges thermiques
 
 c_s = cell_size*pxTom #Taille réelle des cellules
 v_b = 0.06 #Vitesse réelle des bulles en m/s
@@ -102,10 +103,14 @@ dT_p = alpha_p/100*dT_max_p*delta_t*Gamma #Valeur de \Delta T adapté à la simu
 
 # Fission
 fission_ctrl_factor = 0.2 #Facteur de ralentissement pour la thermo du mode 5 (0.2 --> -80%)
-frac_Elib_fiss = 0.8 #Fraction d'énergie libérée par la fission elle même via les fragments
+frac_Elib_fiss = 0.4 #Fraction d'énergie libérée par la fission elle même via les fragments
 neut_gen_fission = 3 #Nombre de neutrons générés par une fission
 E_lib_fission = 1.95e-11 #Énergie libérée lors de la fission de l'uranium 235
 n_k = 100 #Nombre de neutrons évalués pour déterminer k
+
+# Barre de contrôle
+v_rod = 5 #Vitesse de déplacement de la barre (en pixels par frame)
+time_to_win = 20 #Temps à maintenir la population de neutron pour gagner
 
 def cellTocoord(c, r, param): #c --> colonne (x) et r --> ligne (y)
     if param == 0 :
