@@ -19,6 +19,7 @@ class RightMenu:
     vapQuantity: int;
     enprod: float;
     C_comb: int;
+    k_val: float
     
     spacing = 15; #pix
     start = 10; #pix
@@ -29,6 +30,7 @@ class RightMenu:
         posY = self.start
         indicatorsList = ["Température moyenne :"
                             , "Nombre de neutrons :"
+                            , "Facteur k :"
                             , "Quantité de vapeur :"
                             , "Vitesse simulation :"
                             , "Énergie produite :"
@@ -69,11 +71,11 @@ class RightMenu:
 
         posY += 20
         messageList = [ "Controles"
-            , "Clic gauche : Faire apparaitre un neutron"
-            , "Flèche haut : Accélérer la simulation"
-            , "Flèche bas : Ralentir la simulation"
-            , "Flèche gauche : Réduire la concentration"
-            , "Flèche droite : Augmenter la concentration"
+            , "A/Q, Z/S, E/D : Bouger les barres"
+            , "Flèche haut : Accélérer la simu"
+            , "Flèche bas : Ralentir la simu"
+            , "Flèche gauche : Réduire comb."
+            , "Flèche droite : Augmenter comb."
             , "Entrer : Lancer la réaction"
             , "Echap : Revenir au menu"
         ]
@@ -102,6 +104,7 @@ class RightMenu:
             , "Cellule de vapeur"
             , "Uranium-235"
             , "Xénon-135"
+            , "Barre de contrôle"
             , "Autres éléments non fissibles"
         ]
         for message in messageList:
@@ -163,6 +166,8 @@ class RightMenu:
         posY += self.spacing
         pygame.draw.circle(screen,violetXe,(self.startX, posY), int(0.8*cell_size//2))
         posY += self.spacing
+        pygame.draw.rect(screen, grisFonce, (self.startX, posY, cell_size - border, cell_size - border))
+        posY += self.spacing
         pygame.draw.circle(screen,grisVi,(self.startX, posY), int(0.8*cell_size//2))
         
         posY = self.start #pix
@@ -173,6 +178,10 @@ class RightMenu:
         nbNeutron_surface = self.font.render(f"{self.nbNeutron:.0f}", True, (255, 255, 255))
         nbNeutron_rect = nbNeutron_surface.get_rect(topright=(790, posY))
         screen.blit(nbNeutron_surface, nbNeutron_rect)
+        posY += self.spacing
+        k_val_surface = self.font.render(f"{self.k_val:.2f}", True, (255, 255, 255))
+        k_val_rect = k_val_surface.get_rect(topright=(790, posY))
+        screen.blit(k_val_surface, k_val_rect)
         posY += self.spacing
         vapQuantity_surface = self.font.render(f"{self.vapQuantity}", True, (255, 255, 255))
         vapQuantity_rect = vapQuantity_surface.get_rect(topright=(790, posY))
@@ -194,13 +203,14 @@ class RightMenu:
         C_comb_rect = C_comb_surface.get_rect(topright=(790, posY))
         screen.blit(C_comb_surface, C_comb_rect)
 
-    def computeMetrics(self, neutrons, grid, current_speed, enprod):
+    def computeMetrics(self, neutrons, grid, current_speed, enprod, k):
         self.nbNeutron = neutrons.nb_neutron
         self.nbNeutronTotal = neutrons.total_neutrons
         self.temp = np.mean(grid[:, :, 0])
         self.vapQuantity = np.sum(grid[:, :, 0] >= T_ev)
         self.sim_speed_val = current_speed
         self.enprod = enprod
+        self.k_val = k
 
 class Mode5StateModel(ModeStateModel):
     rightMenu: RightMenu
@@ -235,6 +245,7 @@ class Mode5StateModel(ModeStateModel):
                         self.water_grid[i, j, 1] = 0
     
     def handleHeatTransfer(self):
+
         handleHeatTransfer(self.water_grid[:, :, 0]) #On gère le transfert de chaleur dans la grille
 
         mask = (self.water_grid[:, :, 0] - dT_p) > T_min_p #On vérifie la condition, on stocke dans un masque bool
@@ -297,7 +308,22 @@ class Mode5StateModel(ModeStateModel):
         self.nb_thermiques = 0 #Initilisation du compteur de neutrons thermiques (lents)
         self.notInteract_count = 0 #Initialisation du compteur de neutrons n'ayant pas intéragit
         self.Xe_abs_count = 0 #Initialisation du compteur de neutrons absorbés par le Xénon
-        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur 
+        self.E_utile = 0 #Initialisation de l'énergie utile développée par le réacteur
+
+        self.fact_k = 0 #Initilisation du facteur k
+        self.disap_count_k = 0 #Initilisation du compteur de neutrons disparus pour k
+        self.fission_count_k = 0 #Initilisation du compteur de fissions pour k
+        self.E_prod_fission = 0 #Initilisation de l'énergie produite par fission
+        
+        self.rod_w = cell_size - border
+        self.rod_h = height
+        self.rod_y = [-height//2, -height//2, -height//2]
+        
+        self.rod_x_positions = [
+            (cols // 4) * cell_size,
+            (cols // 2) * cell_size,
+            (3 * cols // 4) * cell_size
+        ]
         
     def update(self, events, setMode):
         for event in events:
@@ -352,16 +378,32 @@ class Mode5StateModel(ModeStateModel):
                             rx, ry = res[random.randint(0, len(res)-1)]
                             self.grid[rx, ry] = UR_235
 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            self.rod_y[0] = max(-self.rod_h, self.rod_y[0] - v_rod)
+        if keys[pygame.K_q]:
+            self.rod_y[0] = min(0, self.rod_y[0] + v_rod)
+            
+        if keys[pygame.K_z]:
+            self.rod_y[1] = max(-self.rod_h, self.rod_y[1] - v_rod)
+        if keys[pygame.K_s]:
+            self.rod_y[1] = min(0, self.rod_y[1] + v_rod)
+            
+        if keys[pygame.K_e]:
+            self.rod_y[2] = max(-self.rod_h, self.rod_y[2] - v_rod)
+        if keys[pygame.K_d]:
+            self.rod_y[2] = min(0, self.rod_y[2] + v_rod)
+
         self.neutrons_count = self.neutrons.nb_neutron
         self.nb_thermiques = sum(1 for n in self.neutrons.v[:,2] if n == True)
         for _ in range(self.sim_speed):
             self.sim_time += delta_t #On incrémente le compteur de temps
-
-            # Déplacement des neutrons
-            self.notInteract_count += self.neutrons.deplacerWithConfinment() 
+    
+            removed_neut = self.neutrons.deplacerWithConfinment()
+            self.notInteract_count += removed_neut
             
             # Intéraction des neutrons avec les cases d'eau
-            interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
+            water_abs_count = interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
 
             # Transfert de chaleur entre les cases d'eau
             self.handleHeatTransfer()
@@ -369,15 +411,30 @@ class Mode5StateModel(ModeStateModel):
             # Remontée des bulles de vapeur
             self.raiseGasBubble()
 
+            for idx, rx in enumerate(self.rod_x_positions):
+                rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+                interactNeutronsWithControlRod(self.neutrons, rod_rect)
+
             #Intéractions avec les neutrons           
-            (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid)
+            (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid, self.water_grid[:, :, 0])
             self.fission_count += fission_count
             self.Xe_abs_count += Xe_abs_count
+
+            #Facteur k
+            self.disap_count_k += removed_neut + fission_count + Xe_abs_count + water_abs_count
+            self.fission_count_k += fission_count
+
+            if self.disap_count_k >= n_k:
+                self.fact_k = (self.fission_count_k*neut_gen_fission)/self.disap_count_k
+                self.fission_count_k = 0
+                self.disap_count_k = 0
+
+            self.E_prod_fission += fission_count*E_lib_fission
 
         #Enregistrement des données
         self.save_data()
 
-        self.rightMenu.computeMetrics(self.neutrons, self.water_grid, self.sim_speed, self.E_utile)
+        self.rightMenu.computeMetrics(self.neutrons, self.water_grid, self.sim_speed, self.E_utile, self.fact_k)
         self.rightMenu.C_comb = self.C_comb
 
     def paint(self, screen):
@@ -429,6 +486,10 @@ class Mode5StateModel(ModeStateModel):
                     ),
                     int(cell_size//4)
                 )
+
+        for idx, rx in enumerate(self.rod_x_positions):
+            rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+            pygame.draw.rect(screen, grisFonce, rod_rect)
 
         # affichage des neutrons
         for i in range(self.neutrons.nb_neutron):

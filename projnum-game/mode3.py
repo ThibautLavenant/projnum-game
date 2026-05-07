@@ -309,9 +309,6 @@ class Mode3StateModel(ModeStateModel):
             removed_neut = self.neutrons.deplacerWithConfinment()
             self.notInteract_count += removed_neut
 
-            # Déplacement des neutrons
-            self.notInteract_count += self.neutrons.deplacerWithConfinment() 
-
             #Intéractions avec les neutrons           
             (fission_count, Xe_abs_count) = interactNeutronsWithUrXe(self.neutrons, self.grid)
             self.fission_count += fission_count

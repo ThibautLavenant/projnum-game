@@ -2,6 +2,7 @@ from models import *
 from numpy._typing import NDArray
 import numpy as np
 from simpleRandom import *
+import pygame
 
 class Neutrons:
     max_neutron: int = 10000
@@ -83,6 +84,7 @@ class Neutrons:
             ):  # Si le neutron sort de l'écran on le supprime
                 self.removeNeutron(i)
                 removed = removed + 1
+                continue
 
             # Si neutron rapide, est renvoyé et ralenti
             if (self.pos[i, 0] < 0):
@@ -130,6 +132,7 @@ def handleHeatTransfer(T):
     T += diff / (m_eau * C_me)  # On met à jour
 
 def interactNeutronsWithWater(T, neutrons: Neutrons):
+    water_abs_count = 0
     for i in range(neutrons.nb_neutron):
         # Coordonnées du neutron cible dans la base des cases
         grid_x = int(neutrons.pos[i, 0] // cell_size)
@@ -162,8 +165,10 @@ def interactNeutronsWithWater(T, neutrons: Neutrons):
                         )  
                         # Le neutron lent est quant à lui absorbé donc il disparait
                         neutrons.removeNeutron(i)
+                        water_abs_count += 1
+    return water_abs_count
 
-def interactNeutronsWithUrXe(neutrons, grid):
+def interactNeutronsWithUrXe(neutrons, grid, T=None):
     fission_count = 0
     Xe_abs_count = 0
 
@@ -180,13 +185,17 @@ def interactNeutronsWithUrXe(neutrons, grid):
 
         #Si c'est un neutron lent et que la case contient du combustible fissile
         if grid[grid_x, grid_y] == UR_235 and not neutrons.v[i,2]: 
-            fission_result = getRandomConvXe() #On jete les dés pour la fission
+            fission_result = getRandomInteractLentFission() #On jete les dés pour la fission
 
             if fission_result == 0:
                continue
 
             #Si la fission s'effectue
             fission_count +=1 #On incrémente le compteur de fission
+
+            if T is not None :
+                T[grid_x, grid_y] += (fission_ctrl_factor*q_ad_fast*(frac_Elib_fiss*E_lib_fission)/(m_eau*C_me))
+
             conv_Xe_result = getRandomConvXe()
 
             if conv_Xe_result == 0 : #Si n'est pas converti en Xénon
@@ -221,3 +230,17 @@ def interactNeutronsWithUrXe(neutrons, grid):
             neutrons.removeNeutron(i)
 
     return (fission_count, Xe_abs_count)
+
+def interactNeutronsWithControlRod(neutrons: Neutrons, rod_rect: pygame.Rect):
+    removed = 0
+    for i in range(neutrons.nb_neutron):
+        if not neutrons.v[i, 2]:
+            nx = neutrons.pos[i, 0]
+            ny = neutrons.pos[i, 1]
+        
+            # Si le centre du neutron est dans le rectangle de la barre
+            if rod_rect.collidepoint(nx, ny):
+                neutrons.removeNeutron(i)
+                removed += 1
+            
+    return removed
