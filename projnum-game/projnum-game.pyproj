@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>088107e0-3111-45ec-9890-04554a8facea</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>verifNeutrons2.py</StartupFile>
+    <StartupFile>mainpage.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -38,6 +38,7 @@
     <Compile Include="physics.py" />
     <Compile Include="projnum_game.py" />
     <Compile Include="simpleRandom.py" />
+    <Compile Include="verifTemperature3.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />

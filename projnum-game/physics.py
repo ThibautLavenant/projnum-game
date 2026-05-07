@@ -119,8 +119,8 @@ class Neutrons:
 
 def handleHeatTransfer(T):
     # On calcule le transfert thermique dans chaque direction
-    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * 6040 * delta_t
-    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * 6040 * delta_t
+    energy_right = -(T[1:, :] - T[:-1, :]) * c_s * lambda_eau * delta_t
+    energy_bottom = -(T[:, 1:] - T[:, :-1]) * c_s * lambda_eau * delta_t
     # On applique le transfert d'énergie en positif et en négatif pour le départ et l'arrivée
     diff = np.zeros_like(T)
     diff[1:, :] += energy_right

@@ -62,6 +62,7 @@ T_ev = CToK + 100 #Température d'évaporation de l'eau (à p ambiante)
 rho_eau = 997 #Masse volumique de l'eau en kg/m^3
 C_me = 4180 #Capacité thermique massique de l'eau en J/kg
 m_eau = rho_eau*(cell_size*pxTom)**3 #Masse d'eau dans une cellule
+lambda_eau = 6040 #Conductivité thermique de l'eau (Beaucoup plus grande que la réalité pour accélérer la simulation)
 
 # Propriétés neutrons
 m_n = 1.6749275e-27 #Masse d'un neutron en kg

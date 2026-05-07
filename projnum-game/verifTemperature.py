@@ -11,7 +11,7 @@ from simpleRandom import *
 
 # Pygame initialisation
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Vérification temperature")
+pygame.display.set_caption("Vérification temperature décroissance exp")
 clock = pygame.time.Clock()
 running = True
 
@@ -21,12 +21,12 @@ rows = 1;
 
 grid: NDArray
 grid = np.zeros((cols, rows))
-grid[0, 0] = T0  # Remplissage des températures
-grid[1, 0] = T_ev;
+grid[0, 0] = T_ev  # Remplissage des températures
+grid[1, 0] = T0;
 nb = 0
 nbmax = 1500
 time: NDArray = np.zeros(nbmax);
-temp: NDArray = np.zeros((2,nbmax));
+temp: NDArray = np.zeros(nbmax);
 
 def paint(screen):
     # Affichage des cases d'eau
@@ -64,23 +64,27 @@ while running and nb < nbmax:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             running = False
     handleHeatTransfer(grid[:, :])
+    grid[1, 0] = T0; # Isotherme
     time[nb] = nb*delta_t
-    temp[0, nb] = grid[0,0]
-    temp[1, nb] = grid[1,0]
+    temp[nb] = grid[0,0]
     nb+=1
-    print(f"C0={grid[0,0]}, C1={grid[1,0]}, nb={nb}")
-    paint(screen)  
+    paint(screen)
     pygame.display.flip()
     # clock.tick(fps)
 
+
+# Compute theroretical temperature decay
+tau = (m_eau * C_me)/(lambda_eau * c_s) #Constante de temps de décroissance 
+theoricalTemp = T0 + (T_ev - T0)*np.exp(-time[::100]/tau)
+
 # Create plot
-plt.plot(time, temp[0, :], color='blue', label='C0')
-plt.plot(time, temp[1, :], color='red', label='C1')
+plt.plot(time[::100], temp[::100], color='blue', marker="+", label='Modèle')
+plt.plot(time[::100], theoricalTemp, color='red', label='Théorie')
 
 # Add labels and title
-plt.xlabel('Time')
-plt.ylabel('Temperature')
-plt.title('Temperature Evolution')
+plt.xlabel('Temps (s)')
+plt.ylabel('Température (K)')
+plt.title('Évolution de la température')
 plt.legend()
 
 # Show plot
