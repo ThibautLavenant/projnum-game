@@ -114,6 +114,30 @@ class Mode4StateModel(ModeStateModel):
     water_grid: NDArray
     neutrons: Neutrons
     sim_speed: int
+    
+    # ===== Helpers =====
+    def raiseGasBubble(self):
+        for i in range(cols):
+            for j in range(rows):
+                if self.water_grid[i, j, 0] >= T_ev: #Si la case contient de la vapeur
+                    if (j > 0 and self.water_grid[i, j-1, 0] < T_ev):
+                        self.water_grid[i, j, 1] += 1 #On incrémente le compteur
+                        if (self.water_grid[i, j, 1] >= beta):
+                            tmp = self.water_grid[i, j-1, 0]
+                            self.water_grid[i, j-1, 0] = self.water_grid[i, j, 0]
+                            self.water_grid[i, j, 0] = tmp
+                            self.water_grid[i, j-1, 1] = 0
+                            self.water_grid[i, j, 1] = 0
+                    else:
+                        self.water_grid[i, j, 1] = 0
+
+    def handleHeatTransfer(self):
+        handleHeatTransfer(self.water_grid[:, :, 0]) #On gère le transfert de chaleur dans la grille
+
+        mask = (self.water_grid[:, :, 0] - dT_p) > T_min_p #On vérifie la condition, on stocke dans un masque bool
+        self.water_grid[:, :, 0][mask] -= dT_p #On enlève \Delta T quand c'est vérifié
+        # n_ref = np.sum(mask) #On compte le nombre d'éléments où c'est bon
+        # self.E_utile += n_ref*eta_p*m_eau*C_me*dT_p
 
     # ====== Main functions ======
 
@@ -131,17 +155,17 @@ class Mode4StateModel(ModeStateModel):
         #Paramètres de la barre de contrôle
         self.rod_w = cell_size - border
         self.rod_h = height
-        self.rod_x = (cols // 2) * cell_size #On la place au milieu de l'écran
-        self.rod_y = -height // 2 #On laisse la moitiée sortie au début
+        self.rod_x_positions = [
+            (cols // 4) * cell_size,
+            (cols // 2) * cell_size,
+            (3 * cols // 4) * cell_size
+        ]
+        self.rod_y = [-height//2, -height//2, -height//2] #On laisse la moitiée sortie au début
         self.abs_count = 0
 
         #Paramètres des sources de neutrons
-        self.n_per_sec = 50 #Neutrons générés par seconde par source
-        self.neutron_acc_left = 0
-        self.neutron_acc_right = 0
-        self.gen_dist = 100
-        self.gen_left_dist = self.rod_x - self.gen_dist
-        self.gen_right_dist = self.rod_x + self.gen_dist
+        self.n_per_sec = 140 #Neutrons générés par seconde par source
+        self.neutron_acc = 0
         
         #Timer de victoire
         self.timer = 0
@@ -156,31 +180,45 @@ class Mode4StateModel(ModeStateModel):
                     self.sim_speed = max(1, self.sim_speed - 1)
 
         keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            self.rod_y[0] = max(-self.rod_h, self.rod_y[0] - v_rod)
+        if keys[pygame.K_q]:
+            self.rod_y[0] = min(0, self.rod_y[0] + v_rod)
+            
         if keys[pygame.K_z]:
-            self.rod_y = max(-self.rod_h, self.rod_y - v_rod) #Ne peut pas sortir plus haut que sa taille
+            self.rod_y[1] = max(-self.rod_h, self.rod_y[1] - v_rod)
         if keys[pygame.K_s]:
-            self.rod_y = min(0, self.rod_y + v_rod) #Ne peut pas descendre plus bas que le fond
+            self.rod_y[1] = min(0, self.rod_y[1] + v_rod)
+            
+        if keys[pygame.K_e]:
+            self.rod_y[2] = max(-self.rod_h, self.rod_y[2] - v_rod)
+        if keys[pygame.K_d]:
+            self.rod_y[2] = min(0, self.rod_y[2] + v_rod)
 
         for _ in range(self.sim_speed):
-            #Injection des neutrons aux extrémités gauche et droite
-            self.neutron_acc_left += self.n_per_sec * delta_t
-            self.neutron_acc_right += self.n_per_sec * delta_t
+            self.neutron_acc += self.n_per_sec * delta_t
 
-            while self.neutron_acc_left >= 1 :
-                self.neutrons.addFastNeutron(self.gen_left_dist, height // 2) #Injecté à gauche
-                self.neutron_acc_left -= 1
-                
-            while self.neutron_acc_right >= 1 :
-                self.neutrons.addFastNeutron(self.gen_right_dist, height // 2) #Injecté à droite
-                self.neutron_acc_right -= 1
+            while self.neutron_acc >= 1 :
+                posX = random.uniform(0, width - rightMenuSize)
+                posY = random.uniform(0, height)
+                self.neutrons.addNeutron(posX, posY) #Injecté à gauche
+                self.neutron_acc -= 1
 
-            self.neutrons.deplacerWithConfinment()
+            self.neutrons.deplacer()
 
+            # Intéraction des neutrons avec les cases d'eau
             interactNeutronsWithWater(self.water_grid[:, :, 0], self.neutrons)
+
+            # Transfert de chaleur entre les cases d'eau
+            self.handleHeatTransfer()
+
+            # Remontée des bulles de vapeur
+            self.raiseGasBubble()
             
             #Absorption par la barre de contrôle
-            rod_rect = pygame.Rect(self.rod_x, self.rod_y, self.rod_w, self.rod_h)
-            self.abs_count += interactNeutronsWithControlRod(self.neutrons, rod_rect)
+            for idx, rx in enumerate(self.rod_x_positions):
+                rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+                interactNeutronsWithControlRod(self.neutrons, rod_rect)
 
             #Condition de victoire : Maintenir entre 200 et 300 neutrons
             if 200 <= self.neutrons.nb_neutron <= 300:
@@ -191,20 +229,48 @@ class Mode4StateModel(ModeStateModel):
         self.rightMenu.computeMetrics(self.neutrons, self.sim_speed, self.timer, self.abs_count)
 
     def paint(self, screen):
+        # Affichage du menu de droite
         self.rightMenu.display_menu(screen)
 
+        # Affichage des cases d'eau
         for i in range(cols):
             for j in range(rows):
-                pygame.draw.rect(screen, bleu, (i * cell_size, j * cell_size, cell_size - border, cell_size - border))
+                if self.water_grid[i, j, 0] >= T_ev:  # Si la case contient de la vapeur
+                    color = noir
+                else:
+                    if self.water_grid[i, j, 0] < Palier1:
+                        color = bleu
+                    elif self.water_grid[i, j, 0] < Palier2:
+                        color = jaune
+                    elif self.water_grid[i, j, 0] < Palier3:
+                        color = orange
+                    elif self.water_grid[i, j, 0] < T_ev:
+                        color = rouge
+                pygame.draw.rect(
+                    screen,
+                    color,
+                    (
+                        i * cell_size,
+                        j * cell_size,
+                        cell_size - border,
+                        cell_size - border,
+                    ),
+                )
 
         # Affichage de la barre de contrôle
-        rod_rect = pygame.Rect(self.rod_x, self.rod_y, self.rod_w, self.rod_h)
-        pygame.draw.rect(screen, grisFonce, rod_rect)
+        for idx, rx in enumerate(self.rod_x_positions):
+            rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
+            pygame.draw.rect(screen, grisFonce, rod_rect)
 
-        # Affichage des neutrons
+        # affichage des neutrons
         for i in range(self.neutrons.nb_neutron):
             color = violet if self.neutrons.v[i, 2] else blanc
-            pygame.draw.rect(screen, color, (int(self.neutrons.pos[i, 0]), int(self.neutrons.pos[i, 1]), 3, 3))
+            pygame.draw.rect(screen, 
+                             color, 
+                             (int(self.neutrons.pos[i, 0]), 
+                              int(self.neutrons.pos[i, 1]), 
+                              3, 
+                              3))
             
     def export_datas(self):
         pass

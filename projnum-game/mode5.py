@@ -399,7 +399,7 @@ class Mode5StateModel(ModeStateModel):
         for _ in range(self.sim_speed):
             self.sim_time += delta_t #On incrémente le compteur de temps
     
-            removed_neut = self.neutrons.deplacerWithConfinment()
+            removed_neut = self.neutrons.deplacer()
             self.notInteract_count += removed_neut
             
             # Intéraction des neutrons avec les cases d'eau
@@ -410,7 +410,8 @@ class Mode5StateModel(ModeStateModel):
 
             # Remontée des bulles de vapeur
             self.raiseGasBubble()
-
+            
+            #Absorption par la barre de contrôle
             for idx, rx in enumerate(self.rod_x_positions):
                 rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
                 interactNeutronsWithControlRod(self.neutrons, rod_rect)
@@ -490,6 +491,8 @@ class Mode5StateModel(ModeStateModel):
         for idx, rx in enumerate(self.rod_x_positions):
             rod_rect = pygame.Rect(rx, self.rod_y[idx], self.rod_w, self.rod_h)
             pygame.draw.rect(screen, grisFonce, rod_rect)
+            
+        # Affichage de la barre de contrôle
 
         # affichage des neutrons
         for i in range(self.neutrons.nb_neutron):

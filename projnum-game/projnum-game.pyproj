@@ -23,6 +23,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="verifNeutrons3.py" />
     <Compile Include="verifNeutrons2.py" />
     <Compile Include="verifNeutrons.py" />
     <Compile Include="verifTemperature2.py" />

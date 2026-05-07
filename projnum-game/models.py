@@ -40,6 +40,7 @@ vertUr = (52, 201, 36) #Vert pomme pour l'Uranium
 grisVi = (158, 158, 158) #Gris souris pour le vide
 violetXe = (121, 28, 248) #Indigo pour le Xénon
 grisFonce = (60, 60, 60) #Gris foncé pour la barre de contrôle
+grisClair = (160, 160, 160) #Gris foncé pour la barre de contrôle
 
 cell_size = 20 #Taille des cellules
 cols, rows = (width - rightMenuSize)//cell_size, height//cell_size

@@ -237,7 +237,6 @@ def interactNeutronsWithControlRod(neutrons: Neutrons, rod_rect: pygame.Rect):
         if not neutrons.v[i, 2]:
             nx = neutrons.pos[i, 0]
             ny = neutrons.pos[i, 1]
-        
             # Si le centre du neutron est dans le rectangle de la barre
             if rod_rect.collidepoint(nx, ny):
                 neutrons.removeNeutron(i)
