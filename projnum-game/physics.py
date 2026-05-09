@@ -35,13 +35,17 @@ class Neutrons:
 
     # Ajoute un neutron dans le tableau numpy
     def addNeutronWithSpeed(self, x, y, vitesse):
+        angle = getRandomAngle()  # Direction aléatoire
+        self.addNeutronWithSpeedAndAngle(x, y, vitesse, angle)
+
+    def addNeutronWithSpeedAndAngle(self, x, y, vitesse, angle):
         # Pour garder une taille fixe en mémoire
         if (self.nb_neutron >= self.max_neutron):
             return;
 
         # On ajoute toujours à la position en cours (nbNeutron)
         self.pos[self.nb_neutron] = [x, y]
-        self.angle[self.nb_neutron] = getRandomAngle()
+        self.angle[self.nb_neutron] = angle
         self.actu_vitesse(vitesse, self.nb_neutron)
         self.nb_neutron += 1
         self.total_neutrons += 1

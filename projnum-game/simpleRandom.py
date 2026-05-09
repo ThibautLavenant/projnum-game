@@ -25,9 +25,11 @@ getRandomSpeed = lambda: getNextVal(speed_var)
 
 interact_rapide_var = random_var(10000, lambda: random.choices([0, 1], weights=[100 - p_int_rapide, p_int_rapide])[0])
 getRandomInteractRapide = lambda: getNextVal(interact_rapide_var)
+#getRandomInteractRapide = lambda: random.choices([0, 1], weights=[100 - p_int_rapide, p_int_rapide])[0]
 
 interact_lent_var = random_var(10000, lambda: random.choices([0, 1], weights=[100 - p_abs_lente, p_abs_lente])[0])
 getRandomInteractLent = lambda: getNextVal(interact_lent_var)
+#getRandomInteractLent = lambda: random.choices([0, 1], weights=[100 - p_abs_lente, p_abs_lente])[0]
 
 interact_lent_fission_var = random_var(10000, lambda: random.choices([0, 1], weights=[(100-p_fission)/100, p_fission/100])[0])
 getRandomInteractLentFission = lambda: getNextVal(interact_lent_fission_var)
